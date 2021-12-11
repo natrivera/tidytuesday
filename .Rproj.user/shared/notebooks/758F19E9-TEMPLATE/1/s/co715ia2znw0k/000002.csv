@@ -1,0 +1,30 @@
+"0",""
+"0","tt %>% "
+"0","  map(glimpse)"
+"1","Rows: 2,214"
+"1",""
+"1","
+"
+"1","Columns: 14"
+"1",""
+"1","
+"
+"1","$ name        [3m[38;5;246m<dbl>[39m[23m 102, 102, 102, 102, 102, 102, 102, 102, 102, 102…
+$ char        [3m[38;5;246m<chr>[39m[23m ""Tasha"", ""Beverly"", ""Beverly"", ""Picard"", ""Picard…
+$ line        [3m[38;5;246m<chr>[39m[23m ""Battle bridge."", ""Show me the results of Captai…
+$ direction   [3m[38;5;246m<chr>[39m[23m ""The doors snap closed and the lift moves. Riker…
+$ type        [3m[38;5;246m<chr>[39m[23m ""Statement"", ""Command"", ""Statement"", ""Wake Word""…
+$ pri_type    [3m[38;5;246m<chr>[39m[23m ""Statement"", ""Command"", ""Statement"", ""Question"",…
+$ domain      [3m[38;5;246m<chr>[39m[23m ""IoT"", ""InfoSeek"", ""IoT"", ""InfoSeek"", ""InfoSeek""…
+$ sub_domain  [3m[38;5;246m<chr>[39m[23m ""Turbolift"", NA, NA, NA, NA, NA, ""Locate"", ""Loca…
+$ nv_resp     [3m[38;5;246m<lgl>[39m[23m TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FA…
+$ interaction [3m[38;5;246m<chr>[39m[23m ""Battle bridge."", ""Show me the results of Captai…
+$ char_type   [3m[38;5;246m<chr>[39m[23m ""Person"", ""Person"", ""Person"", ""Person"", ""Person""…
+$ is_fed      [3m[38;5;246m<lgl>[39m[23m TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, …
+$ error       [3m[38;5;246m<lgl>[39m[23m FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,…
+$ value_id    [3m[38;5;246m<dbl>[39m[23m 255, 345, 347, 363, 363, 363, 421, 422, 426, 426…"
+"1",""
+"1","
+"
+"1","$computer
+"

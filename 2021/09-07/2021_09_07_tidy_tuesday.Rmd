@@ -1,0 +1,217 @@
+---
+title: "TidyTemplate"
+date: 2021-09-12
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2021-09-07") # load data
+
+# load country-nationality data
+# url https://github.com/knowitall/chunkedextractor/blob/master/src/main/resources/edu/knowitall/chunkedextractor/demonyms.csv
+nat_url <- 'https://raw.githubusercontent.com/knowitall/chunkedextractor/master/src/main/resources/edu/knowitall/chunkedextractor/demonyms.csv'
+nats <- read.csv(nat_url)
+colnames(nats) <- c('nat' , 'country')
+
+```
+
+
+
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+
+# copy tables to memory
+races <- tt$races
+circuits <- tt$circuits
+results <- tt$results
+drivers <- tt$drivers
+constructors <- tt$constructors
+
+# prepare data in driver table for join
+drivers$driver_nationality <- drivers$nationality
+drivers$driver_nun <- drivers$number
+drivers$driverId <- as.integer(drivers$driverId )
+drivers$driver_nationality <- ifelse(
+  drivers$driver_nationality == 'East German' ,
+  'German' ,
+  drivers$driver_nationality
+)
+drivers$driver_nationality <- ifelse(
+  drivers$driver_nationality == 'Monegasque' ,
+  'Monégasque' ,
+  drivers$driver_nationality
+)
+drivers$driver_nationality <- ifelse(
+  drivers$driver_nationality == 'American-Italian' ,
+  'Italian' ,
+  drivers$driver_nationality
+)
+drivers$driver_nationality <- ifelse(
+  drivers$driver_nationality == 'Argentine-Italian' ,
+  'Italian' ,
+  drivers$driver_nationality
+)
+drivers <- drivers %>% select(-nationality , -url , -number)
+
+# prepare data in constructors table for join
+constructors$con_nationality <- constructors$nationality
+constructors$con_name <- constructors$name
+constructors$con_nationality <- ifelse(
+  constructors$con_nationality == 'Belgium' , 
+  'Belgian' , 
+  constructors$con_nationality )
+constructors$con_nationality <- ifelse(
+  constructors$con_nationality == 'East German' , 
+  'German' , 
+  constructors$con_nationality )
+constructors <- constructors %>% select(-nationality , -url , -name)
+
+# prepare data in races table for join
+races$race_date <- races$date
+races$race_time <- races$time
+races <- races %>% select(-url , -date , -time)
+
+# prepare data in circuits table for join
+circuits$circuit_name <- circuits$name
+circuits$country <- ifelse(circuits$country == 'UK' , 
+                           'United Kingdom' , 
+                           circuits$country)
+circuits <- circuits %>% select(-name , -alt , -url)
+
+
+```
+
+
+
+```{r}
+drivers <- drivers %>% 
+  left_join(y=nats , by=c('driver_nationality' = 'nat')) %>% 
+  mutate(driver_country = country) %>% 
+  select(-country)
+
+constructors <- constructors %>% 
+  left_join(y=nats , by=c('con_nationality' = 'nat')) %>% 
+  mutate(con_country = country) %>% 
+  select(-country)
+```
+
+
+
+
+```{r}
+# join data
+race_data <- results %>% 
+  left_join(y=drivers , by = 'driverId') %>% 
+  left_join(y=constructors , by='constructorId') %>% 
+  left_join(y=races , by='raceId') %>% 
+  left_join(y=circuits , by='circuitId')
+
+# add a boolean for driver country = race country
+race_data$driver_home <- ifelse(
+  race_data$country == race_data$driver_country ,
+  1,0)
+
+# add a boolean for constructor country = race country
+race_data$con_home <- ifelse(
+  race_data$country == race_data$con_country ,
+  1,0)
+
+# create a sub df with the drivers in position = 1
+race_data_win <- race_data %>% filter(position == 1)
+```
+
+
+
+```{r}
+# percentage of constructors at home
+mean(race_data$con_home)*100
+```
+
+```{r}
+# percentage of drivers at home
+mean(race_data$driver_home)*100
+```
+
+```{r}
+# percentage of constructor at home who won
+mean(race_data_win$con_home)*100
+```
+
+```{r}
+# percentage of drivers at home who won
+mean(race_data_win$driver_home)*100
+```
+
+
+```{r}
+# plot constructor all racers vs winners at home
+barplot(
+  c(ALL=mean(race_data$con_home) *100 , 
+    WIN=mean(race_data_win$con_home)*100) ,
+  main = 'Constructor At Home by %'
+  ) 
+```
+
+
+```{r}
+# plot driver all racers vs winners at home
+barplot(
+  c(ALL=mean(race_data$driver_home)*100, 
+    WIN=mean(race_data_win$driver_home)*100) ,
+  main='Driver at Home by %'
+  )
+```
+
+
+
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+ggplot()
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "My TidyTuesday Plot.png",
+  device = "png")
+
+```

@@ -1,0 +1,5 @@
+"0","barplot("
+"0","  c(ALL=mean(race_data$driver_home)*100, "
+"0","    WIN=mean(race_data_win$driver_home)*100) ,"
+"0","  main='Driver at Home by %'"
+"0","  )"

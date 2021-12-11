@@ -1,0 +1,60 @@
+"0",""
+"0","tt <- tt_load(""2021-09-07"")"
+"2","--- Compiling #TidyTuesday Information for 2021-09-07 ----
+"
+"2","--- There are 13 files available ---
+"
+"2","--- Starting Download ---
+"
+"1","
+"
+"1","	Downloading file 1 of 13: `circuits.csv`
+"
+"1","	Downloading file 2 of 13: `constructor_results.csv`
+"
+"1","	Downloading file 3 of 13: `constructor_standings.csv`
+"
+"1","	Downloading file 4 of 13: `constructors.csv`
+"
+"1","	Downloading file 5 of 13: `driver_standings.csv`
+"
+"2","22 parsing failures.
+  row          col expected actual         file
+ 4376 positionText a double      D <raw vector>
+32925 positionText a double      - <raw vector>
+32926 positionText a double      - <raw vector>
+32927 positionText a double      - <raw vector>
+32928 positionText a double      - <raw vector>
+..... ............ ........ ...... ............
+See problems(...) for more details.
+"
+"1","	Downloading file 6 of 13: `drivers.csv`
+"
+"1","	Downloading file 7 of 13: `lap_times.csv`
+"
+"1","	Downloading file 8 of 13: `pit_stops.csv`
+"
+"1","	Downloading file 9 of 13: `qualifying.csv`
+"
+"1","	Downloading file 10 of 13: `races.csv`
+"
+"1","	Downloading file 11 of 13: `results.csv`
+"
+"2","6 parsing failures.
+  row    col expected actual         file
+17716 number a double    \N <raw vector>
+17717 number a double    \N <raw vector>
+17718 number a double    \N <raw vector>
+17719 number a double    \N <raw vector>
+17940 number a double    \N <raw vector>
+..... ...... ........ ...... ............
+See problems(...) for more details.
+"
+"1","	Downloading file 12 of 13: `seasons.csv`
+"
+"1","	Downloading file 13 of 13: `status.csv`
+"
+"1","
+"
+"2","--- Download complete ---
+"

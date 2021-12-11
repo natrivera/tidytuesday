@@ -1,0 +1,5 @@
+"0","# plot constructor all racers vs winners at home"
+"0","barplot("
+"0","  c(ALL=mean(race_data$con_home) *100 , WIN=mean(race_data_win$con_home)*100) ,"
+"0","  main = 'Constructor At Home by %'"
+"0","  ) "
