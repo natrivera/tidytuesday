@@ -19,6 +19,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(tidytuesdayR)
 
+theme_set(theme_minimal())
+
 ```
 
 # Load the weekly Data
@@ -60,9 +62,111 @@ spiders %>%
 Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
 
 ```{r Wrangle}
+# add a boolean for island
+spiders <- spiders %>% 
+  mutate(island = grepl('Is.' , distribution))
 
-
+spiders$distinct_name <- paste( spiders$family , spiders$genus ,  spiders$species , spiders$subspecies)
 ```
+
+
+```{r}
+distribution <- spiders %>% 
+  select(speciesId , distribution) %>% 
+  mutate(dis_list = str_split(spiders$distribution , ',')) %>% 
+  mutate(dist_to = grepl(' to ' , distribution)) %>% 
+  mutate(dist_parentheses = grepl('\\(.{1,} to .{1,}\\)',distribution))
+```
+
+
+
+```{r}
+# break down the distribution column
+dist <- spiders %>% 
+  select(speciesId , distribution) %>% 
+  mutate(dis_list = str_split(spiders$distribution , ',')) %>% 
+  unnest(dis_list) %>% 
+  mutate(dis_list = str_trim(dis_list)) %>% 
+  mutate(dis_to = grepl(' to ' , dis_list)) %>% 
+  mutate(dis_list2 = str_replace(dis_list , '. Introduced to' , ' to')) %>% 
+  mutate(dis_list3 = str_replace(dis_list2 , ' \\(.{1,}\\)' , '')) %>% 
+  mutate(dis_list4 = str_replace(dis_list3 , '\\(.{1,}|.{0,}[a-z]{1,}\\)' , '')) %>% 
+  mutate(two_to = grepl('.{1,} to .{1,} and .{1,} to .{1,}' , dis_list4))
+```
+
+
+
+```{r}
+# split the dist df to those with two movements
+dist1 <- dist %>% 
+  filter(!two_to) %>% 
+  select(speciesId , dis_list4) %>% 
+  filter(dis_list4 != '')
+
+# split the dist df to those with two movements
+# split those rows with two movements to two rows
+dist2 <- dist %>% 
+  filter(two_to) %>% 
+  select(speciesId , dis_list4) %>% 
+  filter(dis_list4 != '') %>% 
+  mutate(dis_list4 = str_split(dis_list4 , 'and')) %>% 
+  unnest(dis_list4) %>% 
+  mutate(dis_list4 = str_trim(dis_list4))
+
+
+# union the data back
+dist3 <- union_all(dist1,dist2) %>% 
+  mutate(dis_to = grepl(' to ' , dis_list4))
+```
+
+
+
+
+```{r}
+# list of countries where spiders are
+countries <- dist3 %>% filter(!dis_to) %>% select(-dis_to)
+
+# list of imports
+imports <- dist3 %>% filter(dis_to) %>% select(-dis_to)
+
+imports1 <- imports %>% 
+  separate(dis_list4 ,sep =  ' to ',into = c('origin' , 'dest')) %>% 
+  left_join(spiders ,by = 'speciesId') %>% 
+  select(speciesId , origin , dest , year)
+
+# split up the countries in the import list
+countries <- imports %>% 
+  mutate(dis_list4 = str_split(dis_list4 , ' to ')) %>% 
+  unnest(dis_list4) %>% 
+  union_all(countries) %>% 
+  unique()
+```
+
+
+
+```{r}
+dist %>% 
+  filter(grepl('.{1,} to .{1,} and .{1,} to .{1,}' , dis_list)) %>% 
+  select(dis_list)
+```
+
+```{r}
+spiders %>% 
+  filter(grepl('.{1,} to .{1,} and .{1,} to .{1,}' , distribution)) %>% 
+  select(distribution)
+```
+
+
+
+```{r}
+table(distribution$dist_to)
+```
+
+
+```{r}
+unlist(str_split(spiders$distribution , ','))
+```
+
 
 
 # Visualize
@@ -70,10 +174,106 @@ Explore the data and process it into a nice format for plotting! Access each dat
 Using your processed dataset, create your unique visualization.
 
 ```{r Visualize}
-
-
+spiders %>% 
+  group_by(distribution) %>% 
+  summarise(n=n()) %>% 
+  ggplot(aes(y=distribution,x=n)) +
+  geom_bar(stat = 'identity')
   
 ```
+
+```{r}
+dist <- spiders$distribution %>% 
+  str_split(',') %>% 
+  unlist() %>% 
+  str_trim() %>% 
+  as.data.frame() %>% 
+  rename(distribution='.') %>% 
+  group_by(distribution ) %>% 
+  summarise(n=n() , .groups = 'drop') %>% 
+  arrange(-n)
+
+#ggplot(dist , aes())
+
+head(dist,20)
+```
+
+
+```{r}
+dist %>% 
+  filter(grepl(' to ' , distribution)) %>% 
+  filter(!grepl('\\(.{1,} to .{1,}\\)',distribution))
+```
+
+
+```{r}
+sapply(spiders, n_distinct)
+```
+
+```{r}
+spiders %>% 
+  count(distinct_name) %>% 
+  arrange(-n)
+```
+
+
+```{r}
+spiders %>% 
+  filter(species %in% c('fragilis' , ''))
+```
+
+
+
+```{r }
+spiders %>% 
+  count(family) %>% 
+  mutate(family = fct_lump(family, 8, w = n, other_level = "All others")) %>% 
+  group_by(family) %>% 
+  summarise(n=sum(n) , .groups='drop') %>% 
+  mutate(family = fct_reorder(family, n)) %>% 
+  arrange(family)
+```
+
+
+```{r}
+spiders %>% 
+  count(family) %>% 
+  mutate(family = fct_lump(family, 19, w = n, other_level = "All others")) %>% 
+  group_by(family) %>% 
+  summarise(n=sum(n) , .groups='drop') %>% 
+  mutate(family = fct_reorder(family, n)) %>%
+  ggplot(aes(x=n,y=family)) +
+  geom_bar(stat='identity')
+```
+
+
+```{r}
+spiders %>% 
+  count(author) %>% 
+  mutate(author = fct_lump(author, 19, w = n, other_level = "All others")) %>% 
+  group_by(author) %>% 
+  summarise(n=sum(n) , .groups='drop') %>% 
+  mutate(author = fct_reorder(author, n)) %>%
+  ggplot(aes(x=n,y=author)) +
+  geom_bar(stat='identity')
+```
+
+
+
+```{r}
+spiders %>% filter(substr(species,1,3)== substr(author,1,3))
+```
+
+
+
+```{r}
+spiders %>% 
+  count(year) %>% 
+  ggplot(aes(x=year,y=n)) +
+  geom_point() +
+  geom_smooth(method=loess)
+```
+
 
 # Save Image
 
