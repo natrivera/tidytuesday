@@ -121,17 +121,12 @@ dat3 <- dat2 %>%
 
 
 # function that will return html formatted bar chart
-bar_chart <- function(value, color = "red", display_value = NULL){
+bar_chart <- function(value, color = "red", display_value = '&nbsp;'){
   
-  # Choose to display percent of total
-  if (is.null(display_value)) {
-    display_value <- "&nbsp;"
-  } else {
-    display_value <- display_value
-  }
-  
-  # paste color and value into the html string
-  glue::glue("<span style=\"display: inline-block; direction: ltr; border-radius: 4px; padding-right: 2px; background-color: {color}; color: {color}; width: {value}%\">&nbsp;</span><span style=\" font-weight: bold;  display: fixed;\">&nbsp;&nbsp;{display_value}</span>")
+  # html of two spans with bar chart
+  glue::glue('<span style=\"display: inline-block; direction: ltr; border-radius: 4px; ' , 
+             ' padding-right: 2px; background-color: {color}; color: {color}; width: {value}% \">&nbsp;</span> ' , 
+             '<span style=\" font-weight: bold; display: fixed;\">&nbsp;&nbsp;{display_value}</span>')
 }
 
 
@@ -183,7 +178,7 @@ p <- dat3 %>%
     columns = c(`No High School`:`Doctorate`)
   ) %>% 
   tab_spanner(
-    label = md("**At Least 4 Year Degree %**"),
+    label = md("**4-Year Degree %**"),
     columns = c(`Four Year Degree`)
   ) %>% 
   cols_align(
@@ -216,9 +211,8 @@ p <- dat3 %>%
       domain = NULL
     )
   ) %>% 
-  tab_options(
-    table.margin.left =  pct(2),
-    table.margin.right =  pct(2),
+  cols_width(
+    `Four Year Degree` ~ pct(20)
   )
 p
 ```
