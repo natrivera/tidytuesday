@@ -118,10 +118,6 @@ pairs(colony_full %>% select(colony_lost_pct , `Varroa mites`:Unknown))
 ```
 
 
-```{r}
-lm <- lm(data = colony_full , formula = colony_lost_pct~`Varroa mites`+`Other pests/parasites`+Disesases+Pesticides+Other+`Unknown`)
-summary(lm)
-```
 
 ```{r}
 colony_full %>% 
@@ -141,8 +137,18 @@ colony_full %>%
   group_by( date) %>% 
   summarise(loss = mean(colony_lost_pct) , .groups = 'drop') %>% 
   ggplot(aes(x=date , y=loss , color=factor(year(date)))) +
-  geom_line() +
-  facet_wrap( ~factor(year(date)) , scales="free_x" )
+  geom_line(size=1.5) +
+  facet_wrap( ~factor(year(date)) , scales="free_x" ) +
+  theme(legend.position = "none") +
+  labs(x='' , 
+       y='% of Colonies Lost' , 
+       title='% of Colonies Lost by Quarter' , 
+       subtitle = 'Note: Loss is higher in the first quarter.',
+       caption = ('Plot: @itsnatrivera | Nat Rivera | Source: USDA') ) +
+  theme(
+        plot.title = element_text(color = "black", size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(color = "blue"),
+        plot.caption = element_text(color = "blue", face = "bold" ))
 ```
 
 
@@ -152,22 +158,23 @@ colony_full %>%
   filter(!is.na(colony_lost_pct)) %>% 
   group_by( date) %>% 
   summarise(loss = mean(colony_lost_pct) , .groups = 'drop') %>% 
-  ggplot(aes(x=(month(date)) , y=loss , color=factor(year(date)))) +
-  geom_line() + 
-  scale_x_continuous(breaks = 1:12)
+  ggplot(aes(x=(month(date)) , y=(loss) , color=factor(year(date)))) +
+  geom_line(size=1.5) + 
+  scale_x_continuous(breaks = c(1,4,7,10)) +
+  ylim(c(0,20)) +
+  labs(x='Month' , 
+       y='% of Colonies Lost' , 
+       caption = ('Plot: @itsnatrivera | Nat Rivera | Source: USDA') ,
+       color = 'Year' ,
+       title='% of Colonies Lost by Quarter' , 
+       subtitle = 'Note: Loss is higher in the first quarter.') +
+    theme(
+        plot.title = element_text(color = "black", size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(color = "blue"),
+        plot.caption = element_text(color = "blue", face = "bold" ))
 ```
 
 
-```{r}
-colony_full %>% 
-  select(date, colony_lost_pct) %>% 
-  filter(!is.na(colony_lost_pct)) %>% 
-  group_by( date) %>% 
-  summarise(loss = mean(colony_lost_pct) , .groups = 'drop') %>% 
-  ggplot(aes(x=date , y=loss )) +
-  geom_line() + 
-  coord_polar(theta = "x" )
-```
 
 
 
@@ -179,18 +186,11 @@ loss_by_date <- colony_full %>%
   group_by( date) %>% 
   summarise(loss = mean(colony_lost_pct) , .groups = 'drop')
 
-```
-
-
-
-```{r}
-colony_by_date <- colony_full %>% 
-  select(date, colony_n) %>% 
-  filter(!is.na(colony_n)) %>% 
-  group_by( date) %>% 
-  summarise(n = sum(colony_n) , .groups = 'drop')
+loss_by_date$log_loss <- log(loss_by_date$loss)
 
 ```
+
+
 
 ```{r}
 
@@ -202,62 +202,55 @@ spiral_initialize_by_time(xlim=c("2015-01-01 00:00:00", "2021-04-01 00:00:00"),
                           unit_on_axis = "days", period="years",
                           start=90, 
                           end=end_angle,
-                          flip="horizontal")
+                          flip="horizontal" , 
+                          vp_param = list())
 
-ymax <- max(colony_by_date$n)
+ymax <- max(loss_by_date$loss^4) + 500
 
 # Create the track.
-spiral_track(ylim=c(0, ymax*.9),
-             background=FALSE, background_gp = gpar(col = NA, fill = NA))
+spiral_track(ylim=c(0, ymax*1),
+             background=FALSE, background_gp = gpar(col = '#ffffff', fill = '#ffffff'))
 
 # Use a polygon.
-spiral_polygon(x=c(colony_by_date$date, rev(colony_by_date$date)),
-               y=c(colony_by_date$n/2, -rev(colony_by_date$n/2)),
-               gp = gpar(col="#d32e2b", fill="#d32e2b50"))
+spiral_polygon(x=c(loss_by_date$date, rev(loss_by_date$date)),
+               y=c(loss_by_date$loss^4/1, -rev(loss_by_date$loss^4/1)),
+               gp = gpar(col="#000000", fill="#F3C622"))
 
 # Middle baseline.
-spiral_lines(x=colony_by_date$date , y=0)
+spiral_lines(x=loss_by_date$date , y=0)
 
 
 # Text.
-spiral_text(x="2015-01-01", y=500000, text="2015",
+spiral_text(x="2015-01-01", y=1, text="2015",
             facing = "curved_inside", just = "right",
             gp=gpar(cex=1, fontfamily="Courier"))
-spiral_text(x="2016-01-01", y=500000, text="2016",
+spiral_text(x="2016-01-01", y=1, text="2016",
             facing = "curved_inside", just = "right",
             gp=gpar(cex=1, fontfamily="Courier"))
-spiral_text(x="2017-01-01", y=500000, text="2017",
+spiral_text(x="2017-01-01", y=1, text="2017",
             facing = "curved_inside", just = "right",
             gp=gpar(cex=1, fontfamily="Courier"))
-spiral_text(x="2018-01-01", y=500000, text="2018",
+spiral_text(x="2018-01-01", y=1, text="2018",
             facing = "curved_inside", just = "right",
             gp=gpar(cex=1, fontfamily="Courier"))
-spiral_text(x="2019-01-01", y=500000, text="2019",
+spiral_text(x="2019-01-01", y=1, text="2019",
             facing = "curved_inside", just = "right",
             gp=gpar(cex=1, fontfamily="Courier"))
-spiral_text(x="2020-01-01", y=500000, text="2020",
+spiral_text(x="2020-01-01", y=1, text="2020",
             facing = "curved_inside", just = "right",
             gp=gpar(cex=1, fontfamily="Courier"))
-spiral_text(x="2021-01-01", y=500000, text="2021",
+spiral_text(x="2021-01-01", y=1, text="2021",
             facing = "curved_inside", just = "right",
             gp=gpar(cex=1, fontfamily="Courier"))
-
 
 
 ```
 
 
 
-```{r}
-num <- (709/365)*360+(28/365)*360+90
 
-num1 <- ((709+28)/(365)*360 )+(90)
 
-num2 <- 709+28
 
-difftime( "2022-1-06", "2020-1-01", units = "days")
-
-```
 
 
 # Visualize
@@ -278,7 +271,7 @@ Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your p
 
 # This will save your most recent plot
 ggsave(
-  filename = "My TidyTuesday Plot.png",
+  filename = "tidytuesday_bees_yearline.png",
   device = "png")
 
 ```
