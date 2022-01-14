@@ -1,0 +1,284 @@
+---
+title: "TidyTemplate"
+date: 2022-01-11
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tidytuesdayR)
+library(lubridate)
+library(naniar)
+library(spiralize)
+
+theme_set(theme_minimal())
+```
+
+# Load the weekly Data
+
+Dowload the weekly data and make available in the `tt` object.
+
+```{r Load}
+
+tt <- tt_load("2022-01-11")
+
+colony <- tt$colony
+stressor <- tt$stressor
+
+```
+
+
+# Readme
+
+Take a look at the readme for the weekly data to get insight on the dataset.
+This includes a data dictionary, source, and a link to an article on the data.
+
+```{r Readme, eval = interactive()}
+
+tt
+
+```
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r Glimpse}
+
+tt %>% 
+  map(glimpse)
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+
+```{r}
+table(stressor$stressor)
+```
+
+
+
+
+```{r Wrangle}
+# change the stress data to wide
+stressor_wide <- stressor %>% 
+  pivot_wider(names_from = stressor , values_from = stress_pct)
+
+# replace any NA with 0
+stressor_wide[is.na(stressor_wide)] <- 0
+
+
+# join the data
+colony_full <- left_join(colony , stressor_wide , by = c("year", "months", "state"))
+
+# add a date to the data
+colony_full$month <- as.character(map(strsplit(colony_full$months, split = "-"), 1))
+colony_full$date <- as.Date(paste("01 " , 
+                                  colony_full$month, ", " , 
+                                  colony_full$year , sep="")   , format = "%d %B, %Y")
+
+
+colony_full$month <-  factor(colony_full$month, ordered = TRUE, 
+                                levels = c("January", "April", "July", "October"))
+```
+
+
+```{r}
+table(colony_full$state)
+```
+
+
+```{r}
+vis_miss(colony_full)
+
+```
+
+```{r}
+colnames(colony_full)
+```
+
+```{r}
+# correlation plot between percent of colony lost and the stresses
+pairs(colony_full %>% select(colony_lost_pct , `Varroa mites`:Unknown))
+```
+
+
+```{r}
+lm <- lm(data = colony_full , formula = colony_lost_pct~`Varroa mites`+`Other pests/parasites`+Disesases+Pesticides+Other+`Unknown`)
+summary(lm)
+```
+
+```{r}
+colony_full %>% 
+  select(date, colony_lost_pct) %>% 
+  filter(!is.na(colony_lost_pct)) %>% 
+  group_by( date) %>% 
+  summarise(loss = mean(colony_lost_pct) , .groups = 'drop') %>% 
+  ggplot(aes(x=date , y=loss )) +
+  geom_line() 
+```
+
+
+```{r}
+colony_full %>% 
+  select(date, year ,  colony_lost_pct) %>% 
+  filter(!is.na(colony_lost_pct)) %>% 
+  group_by( date) %>% 
+  summarise(loss = mean(colony_lost_pct) , .groups = 'drop') %>% 
+  ggplot(aes(x=date , y=loss , color=factor(year(date)))) +
+  geom_line() +
+  facet_wrap( ~factor(year(date)) , scales="free_x" )
+```
+
+
+```{r}
+colony_full %>% 
+  select(date, year ,  colony_lost_pct) %>% 
+  filter(!is.na(colony_lost_pct)) %>% 
+  group_by( date) %>% 
+  summarise(loss = mean(colony_lost_pct) , .groups = 'drop') %>% 
+  ggplot(aes(x=(month(date)) , y=loss , color=factor(year(date)))) +
+  geom_line() + 
+  scale_x_continuous(breaks = 1:12)
+```
+
+
+```{r}
+colony_full %>% 
+  select(date, colony_lost_pct) %>% 
+  filter(!is.na(colony_lost_pct)) %>% 
+  group_by( date) %>% 
+  summarise(loss = mean(colony_lost_pct) , .groups = 'drop') %>% 
+  ggplot(aes(x=date , y=loss )) +
+  geom_line() + 
+  coord_polar(theta = "x" )
+```
+
+
+
+
+```{r}
+loss_by_date <- colony_full %>% 
+  select(date, colony_lost_pct) %>% 
+  filter(!is.na(colony_lost_pct)) %>% 
+  group_by( date) %>% 
+  summarise(loss = mean(colony_lost_pct) , .groups = 'drop')
+
+```
+
+
+
+```{r}
+colony_by_date <- colony_full %>% 
+  select(date, colony_n) %>% 
+  filter(!is.na(colony_n)) %>% 
+  group_by( date) %>% 
+  summarise(n = sum(colony_n) , .groups = 'drop')
+
+```
+
+```{r}
+
+days <- difftime( "2021-4-01", "2015-1-01", units = "days")
+end_angle <- ((2282/365)*360 )+(90)
+
+# Initialize.
+spiral_initialize_by_time(xlim=c("2015-01-01 00:00:00", "2021-04-01 00:00:00"),
+                          unit_on_axis = "days", period="years",
+                          start=90, 
+                          end=end_angle,
+                          flip="horizontal")
+
+ymax <- max(colony_by_date$n)
+
+# Create the track.
+spiral_track(ylim=c(0, ymax*.9),
+             background=FALSE, background_gp = gpar(col = NA, fill = NA))
+
+# Use a polygon.
+spiral_polygon(x=c(colony_by_date$date, rev(colony_by_date$date)),
+               y=c(colony_by_date$n/2, -rev(colony_by_date$n/2)),
+               gp = gpar(col="#d32e2b", fill="#d32e2b50"))
+
+# Middle baseline.
+spiral_lines(x=colony_by_date$date , y=0)
+
+
+# Text.
+spiral_text(x="2015-01-01", y=500000, text="2015",
+            facing = "curved_inside", just = "right",
+            gp=gpar(cex=1, fontfamily="Courier"))
+spiral_text(x="2016-01-01", y=500000, text="2016",
+            facing = "curved_inside", just = "right",
+            gp=gpar(cex=1, fontfamily="Courier"))
+spiral_text(x="2017-01-01", y=500000, text="2017",
+            facing = "curved_inside", just = "right",
+            gp=gpar(cex=1, fontfamily="Courier"))
+spiral_text(x="2018-01-01", y=500000, text="2018",
+            facing = "curved_inside", just = "right",
+            gp=gpar(cex=1, fontfamily="Courier"))
+spiral_text(x="2019-01-01", y=500000, text="2019",
+            facing = "curved_inside", just = "right",
+            gp=gpar(cex=1, fontfamily="Courier"))
+spiral_text(x="2020-01-01", y=500000, text="2020",
+            facing = "curved_inside", just = "right",
+            gp=gpar(cex=1, fontfamily="Courier"))
+spiral_text(x="2021-01-01", y=500000, text="2021",
+            facing = "curved_inside", just = "right",
+            gp=gpar(cex=1, fontfamily="Courier"))
+
+
+
+```
+
+
+
+```{r}
+num <- (709/365)*360+(28/365)*360+90
+
+num1 <- ((709+28)/(365)*360 )+(90)
+
+num2 <- 709+28
+
+difftime( "2022-1-06", "2020-1-01", units = "days")
+
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "My TidyTuesday Plot.png",
+  device = "png")
+
+```
