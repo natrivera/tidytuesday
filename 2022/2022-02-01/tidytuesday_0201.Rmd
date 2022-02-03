@@ -1,0 +1,423 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(corrplot)
+library(factoextra)
+library(cluster)
+library(gt)
+library(paletteer)
+library(scales)
+library(ggtext)
+library(glue)
+library(ggpubr)
+library(janitor)
+theme_set(theme_minimal())
+```
+
+
+```{r}
+plot_theme <- theme(
+    plot.title=element_markdown( 
+                                 face='bold' ,
+                                 size = 20 , ),
+    plot.subtitle=element_markdown(
+                                 face='bold' ,
+                                 size = 14 , ),
+    axis.text.x=element_text( size=14),
+    axis.text.y=element_text( size=14),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    legend.position = "none",
+    panel.background = element_rect(fill = "#E6F8B2") ,
+    plot.background = element_rect(fill = "#E6F8B2")
+  )
+```
+
+ 
+ 
+
+```{r}
+dog_breed <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/breed_traits.csv' )
+trait_description <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/trait_description.csv')
+breed_rank_all <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-02-01/breed_rank.csv')
+```
+
+ 
+
+ 
+
+ 
+
+```{r}
+str(dog_breed)
+```
+
+ 
+
+```{r}
+# one record has 0 for all -- remove it here
+dog_breed <-  dog_breed %>% clean_names() %>%  filter(affectionate_with_family > 0)
+```
+
+ 
+
+ 
+
+ 
+
+```{r}
+# create a df of only numeric data
+dog_num <- dog_breed %>%
+  select(-c( coat_length , coat_type ) , -1)
+
+#rownames(dog_num) <- dog_breed$breed
+```
+
+ 
+
+ 
+
+```{r}
+dog_num %>%
+  pivot_longer( cols = everything() , names_to = 'col' , values_to = 'rank') %>%
+  ggplot(aes(y=col,x=rank)) +
+  geom_boxplot() +
+  geom_jitter()
+```
+
+ 
+
+ 
+
+```{r}
+dog_num %>% scale() %>% as.data.frame() %>%
+  pivot_longer( cols = everything() , names_to = 'col' , values_to = 'rank') %>%
+  ggplot(aes(y=col,x=rank)) +
+  geom_boxplot() +
+  geom_jitter()
+```
+
+ 
+
+ 
+
+ 
+
+ 
+
+```{r}
+corrplot(cor(dog_num),        # Correlation matrix
+         method = "number", # Correlation plot method
+         type = "full",    # Correlation plot style (also "upper" and "lower")
+         diag = TRUE,      # If TRUE (default), adds the diagonal
+         tl.col = "black", # Labels color
+         bg = "white",     # Background color
+         title = "",       # Main title
+         col = NULL)       # Color palette
+```
+
+ 
+
+ 
+
+```{r}
+corrplot.mixed(cor(dog_num),
+               lower = "circle",
+               upper = "number",
+               tl.col = "black")
+```
+
+ 
+### Start the clustering
+ 
+
+```{r}
+# chose optimal number of clusters
+fviz_nbclust(dog_num, kmeans, method = "wss")
+```
+
+ 
+
+ 
+
+ 
+
+ 
+
+```{r}
+# number of clusters
+num_clusters = 8
+
+#make this example reproducible
+set.seed(1)
+
+#perform k-means clustering with k = 4 clusters
+km <- kmeans(dog_num, centers = num_clusters, nstart = 25)
+
+#plot results of final k-means model
+fviz_cluster(km, data = dog_num)
+
+# add clusters to data
+dog_breed <- cbind(dog_breed, cluster = km$cluster)
+```
+
+ 
+
+ 
+
+ 
+
+```{r}
+dog_breed %>%
+  select(breed,cluster) %>%
+  count(cluster)
+```
+
+ 
+
+ 
+
+```{r}
+dog_breed %>%
+  select(-c(coat_length, coat_type ) , -1) %>%
+  group_by(cluster) %>%
+  summarise(across(everything(), mean)) %>%
+  t() %>%
+  as.data.frame() %>%
+  mutate(rowname = rownames(.)) %>%
+  rename_with(~gsub('V','',.x)) %>%
+  filter( !rowname == 'cluster') %>%
+  gt() %>%
+  data_color(
+    columns = everything(),
+    colors = scales::col_numeric(
+      palette = paletteer::paletteer_d(
+        palette = "ggsci::red_material"
+        ) %>% as.character(),
+      domain = NULL
+      ))
+```
+
+ 
+
+ 
+
+```{r}
+dog_breed %>%
+  select(-c(coat_length, coat_type ) , -1) %>%
+  pivot_longer( cols = c(-cluster) , names_to = 'col' , values_to = 'rank') %>%
+  ggplot(aes(y=col,x=rank,color=as.factor(cluster))) +
+  #geom_boxplot() +
+  geom_jitter()
+```
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+```{r warning=FALSE}
+dog_breed %>%
+  select(-c(coat_length, coat_type ) , -1) %>%
+  group_by(cluster) %>%
+  summarise(across(everything(), mean)) %>%
+  pivot_longer( cols = c(-cluster) , names_to = 'col' , values_to = 'rank') %>%
+  ggplot(aes(y=col,x=rank,color=as.factor(cluster) , label=cluster)) +
+  geom_text(position=position_jitter(width=0.5,height=0.0) , size=10) +
+  plot_theme
+```
+
+ 
+
+ 
+
+```{r  }
+dog_scaled_vars <- dog_breed %>%
+  select(-c(breed , coat_length, coat_type , cluster )) %>%
+  scale() %>%
+  as.data.frame() %>%
+  mutate(cluster = dog_breed$cluster)
+ 
+plot_clust <- dog_scaled_vars %>%
+  #select(-c(coat_length, coat_type ) , -1) %>%
+  group_by(cluster) %>%
+  summarise(across(everything(), mean) , .groups = 'drop') %>%
+  pivot_longer( cols = c(-cluster) , names_to = 'col' , values_to = 'rank') %>%
+  ggplot(aes(x=col,y=rank,color=as.factor(cluster) , label=cluster , group=cluster)) +
+  geom_point(size=10) +
+  geom_line(size=1.5)  +
+  geom_text(color='white') +
+  annotate(
+    geom = "text", x = 'adaptability_level', y = -1.5, 
+    label = 'Rated Lower', hjust = 0, vjust = 2, size = 8) +
+  annotate(
+    geom = "text", x = 'adaptability_level', y = 0.75, 
+    label = 'Rated Higher', hjust = 0, vjust = 2, size = 8) +
+  plot_theme +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank()) +
+  #ylim(-1,3) +
+  coord_flip() +
+  labs(title='Mean of Attributes for Each Cluster of Dog Breeds' ,
+       subtitle = '' ,
+      x='',y='' , 
+      caption='Plot: @itsnatrivera    Data: American Kennel Club') +
+  scale_color_manual(breaks = c('1','2','3','4','5','6','7','8'),
+                     values=c("#009E73", "#E69F00", "#56B4E9", "#000000",
+                              "#293352", "#0072B2", "#D55E00", "#CC79A7")) 
+
+plot_clust
+
+```
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+```{r }
+plot_names <- dog_breed %>%
+  group_by(cluster) %>%
+  mutate(count = sequence(n())  ,
+         countx = ifelse(count%%2==0,-0.5,0.5) ) %>%
+  ggplot(aes(x=countx,y=count , label=breed ,color=as.factor(cluster)  )) +
+ geom_text(size=4.8) +
+  facet_wrap(~cluster , ncol = 2 ,  scales="free_y") +
+  xlim(c(-1,1)) +
+  plot_theme +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank() ,
+        strip.text.x = element_text(
+              size = 12, color = "white", face = "bold"),
+        strip.background = element_rect(
+            color="black", fill="#000000", size=1.5, linetype="solid"),
+        panel.border = element_rect(color = "black",
+                                    fill = NA,
+                                    size = 2)) +
+  labs(title='8 Clusters of Dog Breeds' ,
+       subtitle = '' ) +
+  scale_color_manual(breaks = c('1','2','3','4','5','6','7','8'),
+                     values=c("#009E73", "#E69F00", "#56B4E9", "#000000",
+                              "#293352", "#0072B2", "#D55E00", "#CC79A7"))
+      
+
+plot_names
+```
+
+ 
+
+ 
+
+ 
+
+ 
+
+```{r  fig.width=8,fig.height=5}
+ggarrange(plot_names , plot_clust)
+```
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+
+
+
+
+
+
+
