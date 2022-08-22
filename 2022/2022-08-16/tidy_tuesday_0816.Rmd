@@ -1,0 +1,497 @@
+---
+title: "TidyTemplate"
+date: 2022-08-16
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggimage)
+library(ggtext)
+library(scales)
+
+theme_set(theme_minimal())
+
+blue <- '#0474BA'  
+orange <- '#F17720'
+gray <- '#a9a9a9'
+
+
+plot_theme <- theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  )
+```
+
+# Load the weekly Data
+
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+characters <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-16/characters.csv')
+myers_briggs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-16/myers_briggs.csv')
+psych_stats <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-16/psych_stats.csv')
+
+```
+
+
+
+
+
+```{r}
+mb <- myers_briggs %>% group_by(myers_briggs) %>% summarise(total = sum(number_users))
+mb
+```
+
+
+
+
+```{r}
+dond <- psych_stats %>% filter(char_id == 'MM1')
+
+dond
+
+```
+
+
+
+```{r}
+# Split question column into two options
+psych_stats[c('opt1', 'opt2')] <- str_split_fixed(psych_stats$question, '/', 2)
+
+psych_stats$score <- as.integer( if_else(psych_stats$personality == psych_stats$opt2 , 
+                                        psych_stats$avg_rating ,100-psych_stats$avg_rating))
+```
+
+
+```{r}
+str(psych_stats)
+```
+
+
+```{r}
+
+psych_wider <- psych_stats %>%
+  select(char_name ,  uni_name , question , score ) %>% 
+  pivot_wider(names_from = question, values_from = score , values_fn = sum) 
+```
+
+
+
+```{r}
+psych_wider %>% ggplot( aes(x=`messy/neat`, y=`diligent/lazy`)) + geom_point()
+```
+
+
+
+```{r}
+psych_wider %>% ggplot( aes(x=`morning lark/night owl`, y=`diligent/lazy`)) + geom_point()
+```
+
+
+
+```{r}
+psych_wider %>% ggplot( aes(x=`thick/thin`, y=`diligent/lazy`)) + geom_point()
+```
+
+
+```{r}
+psych_wider %>% ggplot( aes(x=`feminist/sexist` , y=`diligent/lazy`)) + geom_point()
+```
+
+
+```{r}
+psych_wider %>% ggplot( aes(x=`disorganized/self-disciplined` , y=`diligent/lazy`)) + geom_point()
+```
+
+
+```{r}
+psych_lm <- psych_wider %>% select(`messy/neat`:`obedient/rebellious`)
+
+
+lazy_lm <- lm(data = psych_lm , formula =`diligent/lazy`~.)
+summary(lazy_lm)
+```
+
+
+
+```{r fig.width=8}
+showa <- 'The Office'
+showb <- 'Parks and Recreation'
+
+psych_topr<- psych_wider %>% 
+  filter(uni_name == showa |  uni_name == showb ) %>% 
+  left_join(characters , by = c('char_name' = 'name')) 
+
+
+psych_topr %>% 
+  ggplot( aes(x=`chaotic/orderly` , y=	`angelic/demonic` , label = char_name )) + 
+  geom_image(aes(image=image_link), size=0.05 ) +
+  geom_text(nudge_y = -3 , size = 2.5 , check_overlap = TRUE) +
+  facet_grid(~uni_name.x ) +
+  #labs(title= paste(showa , '-' , showb)) +
+  scale_x_continuous(breaks=c(0,50,100)) + 
+  scale_y_continuous(breaks=c(0,50,100)) +
+  scale_color_manual(values=c(blue, orange)) +
+  theme(panel.border=element_blank(), axis.line=element_line())
+
+```
+
+
+```{r}
+universe <- 'The Office'
+
+psych_topr<- psych_wider %>% 
+  filter(uni_name == universe  ) %>% 
+  left_join(characters , by = c('char_name' = 'name')) 
+
+
+psych_topr %>% 
+  ggplot( aes(x=`chaotic/orderly` , y=	`angelic/demonic` , label = char_name )) + 
+  geom_hline(yintercept=50) + 
+  geom_vline(xintercept=50) + 
+  geom_text(nudge_y = -4 , size = 2.5) + 
+  #geom_text_repel(nudge_y = -4) + labs(title = "geom_text_repel()") +
+  geom_image(aes(image=image_link), size=0.06 ) +
+  geom_label(aes(x = 50, y = 5, label = "Angelic"), fill = "white") +
+  geom_label(aes(x = 50, y = 95, label = "Demonic"), fill = "white") +
+  geom_label(aes(x = 5, y = 50, label = "Chaotic"), fill = "white") +
+  geom_label(aes(x = 95, y = 50, label = "Orderly"), fill = "white") +
+  labs(title = paste('Psychometrics for charactors from<strong>' , universe , '</strong>' ), 
+       caption = '<strong>Data:</strong> opensychometrics.org <strong>Plot:</strong> @itsnatrivera') +
+  theme(
+    plot.title = element_markdown(size = 16 , hjust=0.5) ,
+    plot.caption = element_markdown() ,
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank())
+
+```
+
+```{r }
+universe <- 'Parks and Recreation'
+
+psych_topr<- psych_wider %>% 
+  filter(uni_name == universe  ) %>% 
+  left_join(characters , by = c('char_name' = 'name')) 
+
+
+psych_topr %>% 
+  ggplot( aes(x=`chaotic/orderly` , y=	`angelic/demonic` , label = char_name )) + 
+  geom_hline(yintercept=50) + 
+  geom_vline(xintercept=50) + 
+  geom_text(nudge_y = -4 , size = 2.5) + 
+  geom_image(aes(image=image_link), size=0.06 ) +
+  geom_label(aes(x = 50, y = 5, label = "Angelic"), fill = "white") +
+  geom_label(aes(x = 50, y = 95, label = "Demonic"), fill = "white") +
+  geom_label(aes(x = 5, y = 50, label = "Chaotic"), fill = "white") +
+  geom_label(aes(x = 95, y = 50, label = "Orderly"), fill = "white") +
+  labs(title = paste('Psychometrics for charactors from<strong>' , universe , '</strong>' ), 
+       caption = '<strong>Data:</strong> opensychometrics.org <strong>Plot:</strong> @itsnatrivera') +
+  theme(
+    plot.title = element_markdown(size = 16 , hjust = 0.5) ,
+    plot.caption = element_markdown() ,
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank())
+
+```
+
+
+
+```{r }
+universe <- 'Marvel Cinematic Universe'
+
+psych_topr<- psych_wider %>% 
+  filter(uni_name == universe  ) %>% 
+  left_join(characters , by = c('char_name' = 'name')) 
+
+
+psych_topr %>% 
+  ggplot( aes(x=`chaotic/orderly` , y=	`angelic/demonic` , label = char_name )) + 
+  geom_hline(yintercept=50) + 
+  geom_vline(xintercept=50) + 
+  geom_text(nudge_y = -4 , size = 2.5) + 
+  geom_image(aes(image=image_link), size=0.06 ) +
+  geom_label(aes(x = 50, y = 5, label = "Angelic"), fill = "white") +
+  geom_label(aes(x = 50, y = 95, label = "Demonic"), fill = "white") +
+  geom_label(aes(x = 5, y = 50, label = "Chaotic"), fill = "white") +
+  geom_label(aes(x = 95, y = 50, label = "Orderly"), fill = "white") +
+  labs(title = paste('Psychometrics for charactors from<strong>' , universe , '</strong>' ), 
+       caption = '<strong>Data:</strong> opensychometrics.org <strong>Plot:</strong> @itsnatrivera') +
+  theme(
+    plot.title = element_markdown(size = 16 , hjust = 0.5) ,
+    plot.caption = element_markdown() ,
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank())
+
+```
+
+
+
+```{r }
+universe <- 'The Boys'
+
+psych_topr<- psych_wider %>% 
+  filter(uni_name == universe  ) %>% 
+  left_join(characters , by = c('char_name' = 'name')) 
+
+
+psych_topr %>% 
+  ggplot( aes(x=`chaotic/orderly` , y=	`angelic/demonic` , label = char_name )) + 
+  geom_hline(yintercept=50) + 
+  geom_vline(xintercept=50) + 
+  geom_text(nudge_y = -4 , size = 2.5) + 
+  geom_image(aes(image=image_link), size=0.06 ) +
+  geom_label(aes(x = 50, y = 5, label = "Angelic"), fill = "white") +
+  geom_label(aes(x = 50, y = 95, label = "Demonic"), fill = "white") +
+  geom_label(aes(x = 5, y = 50, label = "Chaotic"), fill = "white") +
+  geom_label(aes(x = 95, y = 50, label = "Orderly"), fill = "white") +
+  labs(title = paste('Psychometrics for charactors from<strong>' , universe , '</strong>' ), 
+       caption = '<strong>Data:</strong> opensychometrics.org <strong>Plot:</strong> @itsnatrivera') +
+  theme(
+    plot.title = element_markdown(size = 16 , hjust = 0.5) ,
+    plot.caption = element_markdown() ,
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank())
+
+```
+
+```{r fig.width=8}
+showa <- 'The Simpsons'
+showb <- 'Futurama'
+
+psych_topr<- psych_wider %>% 
+  filter(uni_name == showa |  uni_name == showb ) %>% 
+  left_join(characters , by = c('char_name' = 'name')) 
+
+
+psych_topr %>% 
+  ggplot( aes(x=`chaotic/orderly` , y=	`angelic/demonic` , label = char_name )) + 
+  geom_image(aes(image=image_link), size=0.07 ) +
+  #geom_text(nudge_y = -3 , size = 2.5 ,  show.legend = FALSE) +
+  facet_grid(~uni_name.x ) +
+  scale_x_continuous(breaks=c(0,50,100)) + 
+  scale_y_continuous(breaks=c(0,50,100)) +
+  theme(panel.border=element_blank(), axis.line=element_line())
+
+```
+
+
+
+```{r fig.width=8}
+universe <- 'The Boys'
+
+psych_topr<- psych_wider %>% 
+  filter(uni_name == universe  ) %>% 
+  left_join(characters , by = c('char_name' = 'name')) 
+
+
+psych_topr %>% 
+  ggplot( aes(x=`chaotic/orderly` , y=	`angelic/demonic` , label = char_name )) + 
+  geom_hline(yintercept=50) + 
+  geom_vline(xintercept=50) + 
+  geom_text(nudge_y = -4 , size = 2.5) + 
+  #geom_text_repel(nudge_y = -4) + labs(title = "geom_text_repel()") +
+  geom_image(aes(image=image_link), size=0.07 ) +
+  annotate(geom="text", x = 50, y = 5, label = "Angelic") +
+  annotate(geom="text", x = 50, y = 95, label = "Demonic") +
+  annotate(geom="text", x = 5, y = 50, label = "Chaotic") +
+  annotate(geom="text", x = 95, y = 50, label = "Orderly") +
+  labs(title = 'This describes the plot below') +
+  plot_theme
+
+```
+
+
+```{r fig.width=8}
+universe <- 'Marvel Cinematic Universe'
+
+psych_topr<- psych_wider %>% 
+  filter(uni_name == universe  ) %>% 
+  left_join(characters , by = c('char_name' = 'name')) 
+
+
+psych_topr %>% 
+  ggplot( aes(x=`chaotic/orderly` , y=	`angelic/demonic` , label = char_name )) + 
+  geom_hline(yintercept=50) + 
+  geom_vline(xintercept=50) + 
+  geom_image(aes(image=image_link), size=0.07 ) +
+  geom_text(nudge_y = -4 , size = 2.5) +
+  annotate(geom="text", x = 50, y = 5, label = "Angelic") +
+  annotate(geom="text", x = 50, y = 95, label = "Demonic") +
+  annotate(geom="text", x = 5, y = 50, label = "Chaotic") +
+  annotate(geom="text", x = 95, y = 50, label = "Orderly") +
+  labs(title = 'This describes the plot below') +
+  plot_theme
+
+```
+
+```{r fig.width=8}
+showa <- 'The Boys'
+showb <- 'Marvel Cinematic Universe'
+
+psych_topr<- psych_wider %>% 
+  filter(uni_name == showa |  uni_name == showb ) %>% 
+  left_join(characters , by = c('char_name' = 'name')) 
+
+
+psych_topr %>% 
+  ggplot( aes(x=`chaotic/orderly` , y=	`angelic/demonic` , label = char_name )) + 
+  geom_image(aes(image=image_link), size=0.05 ) +
+  facet_grid(~uni_name.x ) +
+  geom_text(nudge_y = -3 , size = 2.5) +
+  scale_x_continuous(breaks=c(0,50,100)) + 
+  scale_y_continuous(breaks=c(0,50,100)) +
+  theme( axis.line=element_line())
+
+```
+
+
+
+```{r}
+psych_agg <- psych_wider %>% 
+  left_join(characters , by = c('char_name' = 'name')) %>% 
+  group_by(uni_name.x) %>% 
+  summarise(`chaotic   orderly` = mean(`chaotic/orderly`) , 
+            `angelic   demonic` = mean(`angelic/demonic`) , 
+            notes = mean(notability)) %>% 
+  arrange(notes, .by_group = TRUE) %>%
+  top_n(80)
+
+psych_agg %>% 
+  ggplot(aes(x=`chaotic   orderly` , y = `angelic   demonic` , label=uni_name.x)) +
+  #geom_point(show.legend = FALSE) +
+  geom_text(size=2.5 )
+```
+
+
+
+blue <- '#0474BA'  
+orange <- '#F17720'
+gray <- '#a9a9a9'
+
+```{r}
+mb_quants <- myers_briggs %>% 
+  mutate(intro = ifelse(substr(myers_briggs,1,1) == 'I' , 'Introvert','Extrovert')) %>% 
+  group_by(myers_briggs , intro ) %>% 
+  summarise(max_users = max(number_users) , min_users = min(number_users) , .groups='drop') %>% 
+  mutate(myers_briggs = fct_reorder(myers_briggs, max_users, .desc = FALSE))
+  
+
+mb_quants %>% 
+  ggplot(aes(x=max_users , y=myers_briggs , fill=intro , label=comma(max_users))) +
+  geom_bar(stat='identity' , show.legend = FALSE) +
+  geom_text(nudge_x = 800 , size=3) +
+  scale_fill_manual(values=c(gray, blue)) +
+  labs(title = 'Far more <strong style="color:#0474BA">Introverts</strong> filled out the survey than <strong style="color:#a9a9a9">Extroverts</strong>' , 
+       caption = '<strong>Data:</strong> opensychometrics.org <strong>Plot:</strong> @itsnatrivera') +
+  theme(
+    plot.title = element_markdown(size = 16) ,
+    plot.caption = element_markdown() ,
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank())
+```
+
+```{r}
+ # Basic piechart
+mb_quants %>% 
+  group_by(intro ) %>% 
+  summarise(cnt = sum(max_users)) %>%
+  mutate(freq = round(cnt / sum(cnt), 3)) %>% 
+  ggplot(aes(x='', y=freq, fill=intro , label = freq )) +
+  geom_bar(stat="identity", width=2 , show.legend = FALSE) +
+  annotate(geom="text", x = '', y = 0.30, label = '71%') +
+  annotate(geom="text", x = '', y = 0.80, label = '29%') +
+  coord_polar("y", start=0) +
+  scale_fill_manual(values=c(gray, blue)) +
+  labs(title = '<strong style="color:#a9a9a9">Extroverts</strong> vs <strong style="color:#0474BA">Introverts</strong>' , 
+       caption = '<strong>Data:</strong> opensychometrics.org <strong>Plot:</strong> @itsnatrivera') +
+  theme(
+    plot.title = element_markdown(size = 16 , hjust = 0.5) ,
+    plot.caption = element_markdown() ,
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank())
+```
+
+
+```{r}
+myers_briggs %>% 
+   group_by(myers_briggs) %>%
+   filter(avg_match_perc == max(avg_match_perc)) %>%
+   select(myers_briggs , uni_name  , char_name , avg_match_perc , number_users)
+```
+
+
+
+
+```{r}
+myers_briggs %>% 
+   group_by(myers_briggs) %>% 
+  summarise(maxx = max(avg_match_perc))
+```
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+
+
+  
+```
+
+
