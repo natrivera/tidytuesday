@@ -1,0 +1,81 @@
+myers_briggs,uni_name,char_name,avg_match_perc,char_ranks
+ENFJ,Star Trek: The Next Generation,Deanna Troi,73.5,5
+ENFJ,Wynonna Earp,Waverly Earp,73.3,4
+ENFJ,Sense8,Nomi Marks,73.1,3
+ENFJ,Sense8,Hernando Fuentes,72.7,2
+ENFJ,Star Trek: The Next Generation,Guinan,72.5,1
+ENFP,Bones,Angela Montenegro,75.6,5
+ENFP,Criminal Minds,Penelope Garcia,75,4
+ENFP,Sense8,Amanita Caplan,74.3,2
+ENFP,Sex Education,Eric Effiong,74.3,3
+ENFP,NCIS,Abby Sciuto,74.1,1
+ENTJ,Pirates of the Carribean,Elizabeth Swann,69.8,4
+ENTJ,Game of Thrones,Tyrion Lannister,69.8,5
+ENTJ,Mad Men,Joan Holloway,69.6,3
+ENTJ,Westworld,Maeve Millay,69.4,2
+ENTJ,Vikings,Lagertha,68.9,1
+ENTP,Stranger Things,Robin Buckley,70.9,5
+ENTP,Little Women,Jo March,69.2,4
+ENTP,White Collar,Neal Caffrey,68.8,3
+ENTP,Lucifer,Lucifer Morningstar,68.7,2
+ENTP,Orange is the New Black,Nicky Nichols,68.3,1
+ESFJ,Lucifer,Linda Martin,71.5,6
+ESFJ,The West Wing,Donna Moss,71,5
+ESFJ,The Walking Dead,Glenn Rhee,70.9,4
+ESFJ,Avatar: The Last Airbender,Katara,70.7,3
+ESFJ,Star Trek: The Next Generation,Beverly Crusher,70.5,1
+ESFJ,Criminal Minds,Jennifer Jareau,70.5,2
+ESFP,The Big Bang Theory,Penny,66.3,5
+ESFP,Friends,Rachel Green,64.6,4
+ESFP,Schitt's Creek,Alexis Rose,63.9,3
+ESFP,Gossip Girl,Serena van der Woodsen,63.4,2
+ESFP,Modern Family,Haley Dunphy,62.7,1
+ESTJ,The West Wing,C. J. Cregg,70.9,4
+ESTJ,The West Wing,Joey Lucas,70.9,5
+ESTJ,The West Wing,Abbey Bartlet,70.8,3
+ESTJ,Hamilton,Angelica Schuyler,70.5,2
+ESTJ,Star Wars,Princess Leia,70.1,1
+ESTP,Stranger Things,Max Mayfield,68.8,6
+ESTP,Parks and Recreation,Donna Meagle,67.8,5
+ESTP,New Girl,Cece Parekh,67.5,4
+ESTP,Sex and the City,Samantha Jones,66.8,3
+ESTP,NCIS,Anthony DiNozzo,65.9,1
+ESTP,Modern Family,Gloria Delgado-Pritchett,65.9,2
+INFJ,Buffy the Vampire Slayer,Willow Rosenberg,72.6,5
+INFJ,Gilmore Girls,Lane Kim,72,4
+INFJ,Harry Potter,Remus Lupin,70,3
+INFJ,Stranger Things,Jonathan Byers,68.5,2
+INFJ,The Wire,Lester Freamon,67.6,1
+INFP,Broad City,Abbi Abrams,69.1,5
+INFP,Harry Potter,Dobby,66.7,3
+INFP,Beauty and the Beast,Maurice,66.7,4
+INFP,Bob's Burgers,Tina Belcher,66.4,2
+INFP,South Park,Kenny McCormick,63.7,1
+INTJ,Mad Men,Peggy Olson,67.6,5
+INTJ,Arcane,Viktor,67.2,4
+INTJ,Marvel Cinematic Universe,Dr. Strange,66.6,3
+INTJ,Frozen,Elsa,66,2
+INTJ,Dexter,Dexter Morgan,65.7,1
+INTP,Riverdale,Jughead Jones,65.2,3
+INTP,The Breakfast Club,Allison Reynolds,63.5,2
+INTP,The Boys,Kimiko Miyashiro,57.8,1
+ISFJ,Buffy the Vampire Slayer,Willow Rosenberg,72.6,5
+ISFJ,Killing Eve,Kenny Stowton,72,3
+ISFJ,Euphoria,Lexi Howard,72,4
+ISFJ,Sherlock,Molly Hooper,71.9,2
+ISFJ,Parks and Recreation,Ann Perkins,71.8,1
+ISFP,Veep,Mike McLintock,53.5,4
+ISFP,The Sopranos,A.J. Soprano,51.4,3
+ISFP,Shameless,Kermit,51,2
+ISFP,Succession,Tom Wambsgans,47.9,1
+ISTJ,Modern Family,Alex Dunphy,68.4,6
+ISTJ,The X-Files,Dana Scully,68,4
+ISTJ,Buffy the Vampire Slayer,Rupert Giles,68,5
+ISTJ,Sex and the City,Miranda Hobbes,67.4,3
+ISTJ,Ted Lasso,Dr. Sharon Fieldstone,67.3,1
+ISTJ,Westworld,Elsie Hughes,67.3,2
+ISTP,Schitt's Creek,Stevie Budd,63.3,5
+ISTP,Game of Thrones,Sandor Clegane,54.9,4
+ISTP,Sex Education,Adam Groff,54.5,3
+ISTP,Ozark,Rachel Garrison,54.3,2
+ISTP,The Simpsons,Edna Krabappel,52.1,1
