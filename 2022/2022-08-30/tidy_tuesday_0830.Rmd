@@ -58,9 +58,9 @@ pell_animation <- pell %>% mutate(year = as.integer(YEAR)) %>%
             unis = n() , 
             .groups='drop') %>% 
   mutate(avg_pell = awards / recepients) %>% 
-  ggplot(aes(x=recepients , y=awards , label=STATE , size=unis , color=avg_pell)) +
-  geom_point() +
-  geom_text(size = 3 , check_overlap = TRUE , nudge_x = 50000) + 
+  ggplot(aes(x=recepients , y=awards , label=STATE  , color=avg_pell)) +
+  geom_point(aes(size=unis)) +
+  geom_text(size = 6 , check_overlap = TRUE , nudge_x = 100000) + 
   scale_y_continuous(labels = label_number(suffix = " T", scale = 1e-9)) +
   scale_x_continuous(labels = label_number(suffix = " k", scale = 1e-3)) +
   theme(text = element_text(size = 16) , 
@@ -78,7 +78,7 @@ pell_animation
 
 ```{r}
 # animate in a two step process:
-animate(pell_animation, height = 800, width =1000)
+animate(pell_animation, height = 480, width =560)
 anim_save("pell_animation.gif")
 ```
 
