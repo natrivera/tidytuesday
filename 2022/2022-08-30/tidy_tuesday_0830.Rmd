@@ -1,0 +1,109 @@
+---
+title: "TidyTemplate"
+date: 2022-08-30
+output: html_output
+---
+
+# TidyTuesday
+
+Join the R4DS Online Learning Community in the weekly #TidyTuesday event!
+Every week we post a raw dataset, a chart or article related to that dataset, and ask you to explore the data.
+While the dataset will be “tamed”, it will not always be tidy! As such you might need to apply various R for Data Science techniques to wrangle the data into a true tidy format.
+The goal of TidyTuesday is to apply your R skills, get feedback, explore other’s work, and connect with the greater #RStats community!
+As such we encourage everyone of all skills to participate!
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(gganimate)
+library(scales)
+library(ggtext)
+
+theme_set(theme_minimal())
+
+```
+
+
+
+
+# Glimpse Data
+
+Take an initial look at the format of the data available.
+
+```{r }
+pell <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-08-30/pell.csv')
+
+```
+
+# Wrangle
+
+Explore the data and process it into a nice format for plotting! Access each dataset by name by using a dollarsign after the `tt` object and then the name of the data set.
+
+```{r Wrangle}
+
+
+
+```
+
+
+
+
+```{r fig.width=8 , fig.height=6}
+pell_animation <- pell %>% mutate(year = as.integer(YEAR)) %>% 
+  group_by(STATE , year) %>% 
+  summarise(awards = sum(AWARD , na.rm = TRUE) , 
+            recepients = sum(RECIPIENT , na.rm = TRUE) ,
+            unis = n() , 
+            .groups='drop') %>% 
+  mutate(avg_pell = awards / recepients) %>% 
+  ggplot(aes(x=recepients , y=awards , label=STATE , size=unis , color=avg_pell)) +
+  geom_point() +
+  geom_text(size = 3 , check_overlap = TRUE , nudge_x = 50000) + 
+  scale_y_continuous(labels = label_number(suffix = " T", scale = 1e-9)) +
+  scale_x_continuous(labels = label_number(suffix = " k", scale = 1e-3)) +
+  theme(text = element_text(size = 16) , 
+        plot.caption = element_markdown()) +
+  labs(title = 'Pell Grants' , 
+       subtitle = 'Total Awarded vs Number of Awardees by State from 1999 to 2017\nYear: {frame_time}', 
+       x = 'Number of Awardees', y = 'Total Awarded' , 
+       color='Average Award' , size='# of Colleges',
+       caption = '<strong>Data:</strong> US Dept. of Education <strong>Plot:</strong> @itsnatrivera') +
+  #shadow_wake(0.1)+
+  transition_time(year) 
+pell_animation
+```
+
+
+```{r}
+# animate in a two step process:
+animate(pell_animation, height = 800, width =1000)
+anim_save("pell_animation.gif")
+```
+
+
+
+
+# Visualize
+
+Using your processed dataset, create your unique visualization.
+
+```{r Visualize}
+
+
+  
+```
+
+# Save Image
+
+Save your image for sharing. Be sure to use the `#TidyTuesday` hashtag in your post on twitter! 
+
+```{r}
+
+# This will save your most recent plot
+ggsave(
+  filename = "My TidyTuesday Plot.png",
+  device = "png")
+
+```
