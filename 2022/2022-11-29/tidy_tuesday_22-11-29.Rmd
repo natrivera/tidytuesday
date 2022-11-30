@@ -1,0 +1,213 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(gt)
+library(gtExtras)
+library(gganimate)
+library(webshot2)
+theme_set(theme_minimal())
+
+```
+
+
+
+```{r}
+wcmatches <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-29/wcmatches.csv')
+worldcups <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2022/2022-11-29/worldcups.csv')
+flag_db <- read.csv("https://query.data.world/s/mms7qnsv5v73l2uec2m7w6pk25s3i3", header=TRUE, stringsAsFactors=FALSE)
+
+```
+
+
+
+```{r}
+wcmatches <- wcmatches %>% 
+  mutate(stage1 = ifelse(str_detect(stage , 'Group') , 'Group' , stage) , 
+         total_g = home_score + away_score)
+```
+
+
+```{r}
+wcmatches %>% 
+  group_by(stage1) %>% 
+  summarise(n = n() , avg_g = mean(total_g)) %>% 
+  arrange(desc(n))
+```
+
+
+
+
+
+```{r}
+matches_playoffs <- wcmatches %>% 
+  filter(stage1 != 'Group') 
+```
+
+
+
+```{r}
+team_agg <- matches_playoffs %>% 
+  select(year , stage1 , home_team , away_team , home_score , away_score) %>% 
+  pivot_longer(cols = c('home_team' , 'away_team')) %>% 
+  mutate(goals = ifelse(name=='home_team' , home_score , away_score) , 
+         year1 = year %% 1900 ) %>% 
+  select(year , stage1 , goals , name , value) %>% 
+  group_by(year , value ) %>% 
+  summarise(n = n()) %>% 
+  pivot_wider(names_from = year  , values_from = n ) 
+  
+team_summ <-team_agg %>%   
+  mutate(sum = rowSums(across(where(is.numeric)) , na.rm = T)) %>% 
+  select(value , sum)
+```
+
+
+
+
+```{r}
+# function that will return html formatted bar chart
+bar_chart <- function(value, color = "red", display_value = '&nbsp;'){
+  
+  # html of two spans with bar chart
+  glue::glue('<span style=\"display: inline-block; direction: ltr; border-radius: 4px; ' , 
+             ' padding-right: 1px; background-color: {color}; color: {color}; width: {value}% \">&nbsp;</span> ' , 
+             '<span style=\" font-weight: normal; display: fixed;\">&nbsp;{display_value}</span>')
+}
+
+```
+
+
+
+
+
+
+```{r}
+ wc_table <- team_agg %>% 
+  left_join(flag_db %>%  select(-Images.File.Name), by=c('value'='Country')) %>% 
+  left_join(team_summ , by=c('value'='value')) %>% 
+  select(ImageURL,value, sum , 2:22) %>% 
+  arrange(desc(sum)) %>% 
+  mutate(
+    bar_chart = bar_chart(`sum`, 
+                          color = "dodgerblue" , 
+                          display_value = round(`sum`,0)),
+    sum = map(bar_chart, ~gt::html(as.character(.x)))  ) %>% 
+  select(-bar_chart) %>% 
+  gt() %>% 
+  gt_theme_538() %>%
+  text_transform(
+    #Apply a function to a column
+    locations = cells_body(c(ImageURL)),
+    fn = function(x) {
+      #Return an image of set dimensions
+      web_image(
+        url = x,
+        height = 12
+      )
+    }
+  ) %>% 
+  tab_header(
+    title = md("**World Cup Matches Played After the Group Stage**")
+  ) %>% 
+  tab_source_note(
+    source_note = md("<b>Data: </b>FIFA World Cup (tidytuesday) | <b>Flags: </b>data.world (country flags image database from Wikipedia) | <b>Table: </b> Nat Rivera @itsnatrivera")
+  ) %>% 
+  tab_footnote(
+    footnote = md("**Only includes data for final and third place rounds.**"),
+    locations = cells_column_labels(13)
+  ) %>% 
+  #cols_width(c(ImageURL) ~ pct(50)) %>% 
+  cols_width(sum ~ px(100)) %>% 
+  cols_align(
+    align = "left" ,
+    columns = c(`sum`)
+  ) %>% 
+  cols_label(ImageURL = "") %>% 
+  cols_label(sum = "Total") %>% 
+  cols_label(value = "Team") %>% 
+  sub_missing(
+    columns =  c(4:24),
+    missing_text = ""
+  ) %>% 
+  tab_spanner(label = md("**World Cup Year**"),columns = c(4:24))
+
+wc_table
+```
+
+
+
+
+```{r}
+filename <- "/Users/natrivera/TidyTuesdayR/2022/2022-11-29/wc_table.png"
+
+# export the gt table
+gtsave(data = wc_table, filename = "wc_table.png", path = NULL)
+```
+
+
+
+```{r}
+wcmatches %>% 
+  group_by(dayofweek) %>% 
+  count() %>% 
+  ggplot(aes(x=dayofweek , y=n)) +
+  geom_bar(stat='identity') +
+  coord_flip() 
+```
+
+
+
+
+```{r}
+wcmatches %>% 
+  group_by(year) %>% 
+  count() %>% 
+  ggplot(aes(x=year , y=n)) +
+  geom_bar(stat='identity') +
+  coord_flip() 
+
+```
+
+
+
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+```{r}
+
+```
+
