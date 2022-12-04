@@ -11,6 +11,7 @@ library(gt)
 library(gtExtras)
 library(gganimate)
 library(webshot2)
+library(stringr)
 theme_set(theme_minimal())
 
 ```
@@ -24,6 +25,18 @@ flag_db <- read.csv("https://query.data.world/s/mms7qnsv5v73l2uec2m7w6pk25s3i3",
 
 ```
 
+
+
+```{r}
+england_url <- 'https://upload.wikimedia.org/wikipedia/en/thumb/b/be/Flag_of_England.svg/2560px-Flag_of_England.svg.png'
+
+west_germany_url <- 'https://en.wikipedia.org/wiki/West_Germany#/media/File:Flag_of_Germany.svg'
+
+czech <- 'https://en.wikipedia.org/wiki/Flag_of_the_Czech_Republic#/media/File:Flag_of_the_Czech_Republic.svg'
+
+yugoslavia <- 'https://en.wikipedia.org/wiki/Flag_of_Yugoslavia#/media/File:Flag_of_Yugoslavia_(1946-1992).svg'
+
+```
 
 
 ```{r}
@@ -55,16 +68,54 @@ matches_playoffs <- wcmatches %>%
 team_agg <- matches_playoffs %>% 
   select(year , stage1 , home_team , away_team , home_score , away_score) %>% 
   pivot_longer(cols = c('home_team' , 'away_team')) %>% 
-  mutate(goals = ifelse(name=='home_team' , home_score , away_score) , 
-         year1 = year %% 1900 ) %>% 
+  mutate(goals = ifelse(name=='home_team' , home_score , away_score)  ) %>% 
   select(year , stage1 , goals , name , value) %>% 
   group_by(year , value ) %>% 
   summarise(n = n()) %>% 
-  pivot_wider(names_from = year  , values_from = n ) 
+  pivot_wider(names_from = year  , values_from = n )
+
   
 team_summ <-team_agg %>%   
   mutate(sum = rowSums(across(where(is.numeric)) , na.rm = T)) %>% 
   select(value , sum)
+
+
+
+```
+
+
+
+
+```{r}
+places <- worldcups %>% 
+  select(year , winner, second, third , fourth) %>% 
+  pivot_longer(cols = 2:5 )  %>% 
+  mutate(place = ifelse(name == 'winner' , 4000 , 
+                        ifelse(name == 'second' , 3000 , 
+                               ifelse(name == 'third' , 2000 , 1000)))) %>% 
+  select(year , value , place)
+
+
+team_agg_mutated <- matches_playoffs %>% 
+  select(year , stage1 , home_team , away_team , home_score , away_score) %>% 
+  pivot_longer(cols = c('home_team' , 'away_team')) %>% 
+  mutate(goals = ifelse(name=='home_team' , home_score , away_score)  ) %>% 
+  select(year , stage1 , goals , name , value) %>% 
+  group_by(year , value ) %>% 
+  summarise(n = n()) %>% 
+  left_join(places , by=c('value'='value' , 'year'='year')) %>% 
+  mutate(year = year ,
+    year = str_pad(ifelse(year > 1999 , year%%2000, year%%1900) , 2 , pad="0") , 
+    n1=coalesce( place, 0) + n) %>% 
+  select(-place) %>% 
+  select(-n) %>% 
+  pivot_wider(names_from = year  , values_from = n1 , values_fill = 0) %>%
+  left_join(places %>% 
+              filter(place>3999) %>% 
+              mutate(winner = place/4000) %>% 
+              group_by(value) %>% 
+              summarise(wins = n()), 
+            by=c('value'='value' ))
 ```
 
 
@@ -74,31 +125,45 @@ team_summ <-team_agg %>%
 # function that will return html formatted bar chart
 bar_chart <- function(value, color = "red", display_value = '&nbsp;'){
   
+  value = value*1.6
   # html of two spans with bar chart
   glue::glue('<span style=\"display: inline-block; direction: ltr; border-radius: 4px; ' , 
              ' padding-right: 1px; background-color: {color}; color: {color}; width: {value}% \">&nbsp;</span> ' , 
-             '<span style=\" font-weight: normal; display: fixed;\">&nbsp;{display_value}</span>')
+             '<span style=\" font-weight: normal; display: fixed;\">{display_value}</span>')
 }
 
 ```
 
 
 
-
-
-
 ```{r}
- wc_table <- team_agg %>% 
+ wc_table_dt <- team_agg_mutated %>% 
   left_join(flag_db %>%  select(-Images.File.Name), by=c('value'='Country')) %>% 
   left_join(team_summ , by=c('value'='value')) %>% 
-  select(ImageURL,value, sum , 2:22) %>% 
+  select(ImageURL,value , wins, sum , 2:22) %>% 
   arrange(desc(sum)) %>% 
   mutate(
     bar_chart = bar_chart(`sum`, 
                           color = "dodgerblue" , 
                           display_value = round(`sum`,0)),
     sum = map(bar_chart, ~gt::html(as.character(.x)))  ) %>% 
-  select(-bar_chart) %>% 
+  select(-bar_chart)
+```
+
+
+
+
+```{r}
+subtitle_txt <- '<span style= \"background-color: gold; font-weight: bold\">First Place</span> 
+<span style= \"background-color: deepskyblue; font-weight: bold\ \">Second Place</span> 
+<span style= \"background-color: #b3b3b3; font-weight: bold\ \">Third Place</span> 
+<span style= \"background-color: #e5e5e5; font-weight: bold\ \">Fourth Place</span>'
+```
+
+
+
+```{r}
+ wc_table <- wc_table_dt %>% 
   gt() %>% 
   gt_theme_538() %>%
   text_transform(
@@ -112,30 +177,35 @@ bar_chart <- function(value, color = "red", display_value = '&nbsp;'){
       )
     }
   ) %>% 
-  tab_header(
-    title = md("**World Cup Matches Played After the Group Stage**")
-  ) %>% 
+  tab_header(title = md("**World Cup Matches Played After the Group Stage**") , 
+             subtitle = md(subtitle_txt)) %>% 
   tab_source_note(
     source_note = md("<b>Data: </b>FIFA World Cup (tidytuesday) | <b>Flags: </b>data.world (country flags image database from Wikipedia) | <b>Table: </b> Nat Rivera @itsnatrivera")
   ) %>% 
   tab_footnote(
     footnote = md("**Only includes data for final and third place rounds.**"),
-    locations = cells_column_labels(13)
+    locations = cells_column_labels(14:15)
   ) %>% 
-  #cols_width(c(ImageURL) ~ pct(50)) %>% 
-  cols_width(sum ~ px(100)) %>% 
-  cols_align(
-    align = "left" ,
-    columns = c(`sum`)
-  ) %>% 
+  cols_width(sum ~ px(125)) %>% 
+  cols_width(c(5:25) ~ px(25)) %>% 
+  cols_align(align = "left" , columns = c(`sum`)) %>% 
+  cols_align(align = 'center' , columns=c(3,5:25)) %>% 
   cols_label(ImageURL = "") %>% 
-  cols_label(sum = "Total") %>% 
+  cols_label(sum = "Total Matches") %>% 
   cols_label(value = "Team") %>% 
-  sub_missing(
-    columns =  c(4:24),
-    missing_text = ""
+  text_transform(
+    locations = cells_body(columns = c(5:25)),
+    fn = function(x) {
+      ifelse(x<1,"", substr(str_pad(as.character(x), 4, pad = "0") , 4,4) )
+    }
   ) %>% 
-  tab_spanner(label = md("**World Cup Year**"),columns = c(4:24))
+  sub_missing(columns =  c(3 ,5:25), missing_text = "") %>% 
+  data_color(columns =  c(5:25) , 
+             apply_to = 'fill' ,
+             colors = scales::col_numeric(
+                  palette = c( "white", "gray90", "gray70" ,  "deepskyblue", "gold") , 
+                  domain = c(-1,4005))) %>% 
+  tab_spanner(label = md("**World Cup Year**"),columns = c(5:25)) 
 
 wc_table
 ```
