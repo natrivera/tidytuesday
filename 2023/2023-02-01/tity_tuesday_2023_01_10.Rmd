@@ -1,0 +1,113 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(gganimate)
+#library(sf)
+```
+
+
+
+
+```{r}
+
+
+cats_uk <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-31/cats_uk.csv')
+cats_uk_reference <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-01-31/cats_uk_reference.csv')
+
+```
+
+
+```{r}
+cats_uk$date <- as.POSIXlt(cats_uk$timestamp )
+```
+
+
+
+```{r}
+cats_uk %>% group_by(tag_id) %>% count()
+```
+
+
+
+```{r}
+facet_plot <- cats_uk %>% 
+  ggplot(aes(x=location_long , y=location_lat)) +
+  geom_point() +
+  facet_wrap(~tag_id , ncol = 5)
+facet_plot
+```
+
+
+
+
+```{r}
+scat_plot <- cats_uk %>% 
+  filter(tag_id == 'Bits-Tag') %>% 
+  ggplot(aes(x=location_long , y=location_lat , color=algorithm_marked_outlier)) +
+  geom_point() 
+scat_plot
+```
+
+
+
+```{r}
+line_plot <- cats_uk %>% 
+  filter(tag_id == 'Bits-Tag') %>% 
+  ggplot(aes(x=location_long , y=location_lat )) +
+  geom_path() 
+line_plot
+```
+
+
+```{r}
+anim_plot <- cats_uk %>% 
+  filter(tag_id == 'Bits-Tag') %>% 
+  ggplot(aes(x=location_long , y=location_lat ,color=algorithm_marked_outlier)) +
+  geom_line() +
+  transition_reveal(timestamp) 
+anim_plot
+```
+
+
+
+
+
+```{r}
+abba <- cats_uk %>% filter(tag_id == 'Abba-Tag') 
+```
+
+
+
+
+
+```{r}
+
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
+```{r}
+
+```
+

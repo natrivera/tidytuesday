@@ -1,0 +1,250 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+#library(dplyr)
+#library(ggplot2)
+library(jsonlite)
+library(blsAPI) # https://github.com/mikeasilva/blsAPI
+library(lubridate)
+library(scales)
+library(ggtext)
+
+theme_set(theme_minimal())
+```
+
+
+
+```{r}
+response <- blsAPI('CUUR0000SA0') #Consumer Price Index - All Urban Consumers
+json <-fromJSON(response)
+
+dat <- fromJSON(response)$Results$series$data %>%  
+  as.data.frame()
+
+
+```
+
+
+
+
+
+```{r}
+dat$month <- substr(dat$period , 2,4)
+dat <- dat %>% filter(month < 13)
+dat$date <- as.Date(paste0(dat$year , '/' , dat$month , '/1'))
+dat$value <- as.double(dat$value)
+```
+
+
+
+```{r}
+dat %>% 
+  ggplot(aes(x=date , y=value)) +
+  geom_line()
+```
+
+
+
+
+
+```{r}
+## Pull the data via the API
+payload1014 <- list(
+  'seriesid'=c( 'CUUR0000SA0' ),
+  'startyear'=2010,
+  'endyear'=2014)
+
+payload1519 <- list(
+  'seriesid'=c( 'CUUR0000SA0' ),
+  'startyear'=2015,
+  'endyear'=2019)
+
+payload2022 <- list(
+  'seriesid'=c( 'CUUR0000SA0' ),
+  'startyear'=2020,
+  'endyear'=2022)
+
+
+```
+
+
+
+
+```{r}
+
+json1014 <- blsAPI(payload1014, 1) %>% fromJSON()
+json1519 <- blsAPI(payload1519, 1) %>% fromJSON() 
+json2022 <- blsAPI(payload2022, 1) %>% fromJSON()
+
+cpi1014 <- json1014$Results$series$data %>% as.data.frame()
+cpi1519 <- json1519$Results$series$data %>% as.data.frame()
+cpi2022 <- json2022$Results$series$data %>% as.data.frame()
+
+
+cpi <- union(cpi1014,cpi1519) %>% union(cpi2022)
+```
+
+
+```{r}
+cpi$month <- substr(cpi$period , 2,4)
+cpi <- cpi %>% filter(month < 13)
+cpi$date <- as.Date(paste0(cpi$year , '/' , cpi$month , '/1'))
+cpi$value <- as.double(cpi$value)
+```
+
+
+```{r}
+cpi %>% 
+  ggplot(aes(x=date , y=value)) +
+  geom_line()
+```
+
+```{r}
+
+big_tech_stock_prices <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-07/big_tech_stock_prices.csv')
+big_tech_companies <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-07/big_tech_companies.csv')
+```
+
+
+```{r}
+big_tech_stock_prices$year <- year(big_tech_stock_prices$date)
+```
+
+
+
+
+
+
+```{r}
+big_tech_stock_prices %>% 
+  ggplot(aes(x=date,y=close , color=stock_symbol)) +
+  geom_line()
+```
+
+
+
+
+
+
+
+```{r}
+big_tech_stock_prices %>% 
+  ggplot(aes(x=date,y=close , color=stock_symbol)) +
+  geom_line() +
+  facet_wrap(~stock_symbol , ncol=3)
+```
+
+
+
+
+```{r}
+big_tech_stock_prices %>% 
+  filter(year < 2023) %>% 
+  ggplot(aes(x=date,y=close , color=stock_symbol)) +
+  geom_line() +
+  facet_wrap(~year , ncol=5 , scales="free")
+```
+
+
+
+
+
+```{r}
+# get the first record of the year per stock_symbol
+yr_start <- big_tech_stock_prices %>% 
+  group_by(year, stock_symbol) %>% 
+  filter(date == min(date)) %>% 
+  mutate(st_close = close) %>% 
+  select(stock_symbol , year , st_close)
+
+# get the first record of each  stock_symbol
+st_start <- big_tech_stock_prices %>% 
+  group_by(stock_symbol) %>% 
+  filter(date == min(date)) %>% 
+  mutate(st_close_all = close) %>% 
+  select(stock_symbol , st_close_all)
+
+stocks <- big_tech_stock_prices %>% 
+  left_join(yr_start , by=c('year','stock_symbol')) %>% 
+  mutate(yr_change = close - st_close , 
+         yr_change_per = yr_change/st_close) %>% 
+  left_join(st_start , by=c('stock_symbol')) %>% 
+  mutate(tot_change = close - st_close_all , 
+         tot_change_per = tot_change/st_close_all)
+
+
+
+avg_daily <- stocks %>% 
+  group_by(date) %>% 
+  summarise(avg_close = mean(yr_change_per))
+
+stocks <- stocks %>% 
+  left_join(avg_daily , by=c('date'))
+
+
+max_yr <- stocks %>% 
+  filter(year < 2023) %>% 
+  group_by(year) %>% 
+  filter(yr_change_per == max(yr_change_per)) %>% 
+  select(year , stock_symbol , date , yr_change_per) 
+
+min_yr <- stocks %>% 
+  filter(year < 2023) %>% 
+  group_by(year) %>% 
+  filter(yr_change_per == min(yr_change_per)) %>% 
+  select(year , stock_symbol , date , yr_change_per) 
+
+```
+
+
+
+
+```{r}
+stock_plot <- stocks %>% 
+  filter(year < 2023) %>% 
+  ggplot(aes(x=date,y=yr_change_per , color=stock_symbol)) +
+  geom_line(alpha = 0.5  , size=0.25) +
+  geom_line(aes(y=avg_close, color="_Average" ) , size=1.25) +
+  geom_text(data = max_yr , aes(x=date , y=yr_change_per , label=stock_symbol) , 
+            size=2.5 , nudge_x = -5 , fontface = "bold") +
+  geom_text(data = min_yr , aes(x=date , y=yr_change_per , label=stock_symbol) , 
+            size=2.5 , nudge_x = -5  , fontface = "bold") +
+  facet_wrap(~year , ncol=5 , scales="free") + 
+  scale_x_date(date_labels = "%b") +
+  scale_y_continuous(labels = label_percent()) +
+  guides(colour = guide_legend(nrow = 1)) +
+  labs(
+    title = "Percentage Stock Growth vs Price at Start of Year for Big Tech Companies",
+    subtitle = 'Bolded line = Average \nMax and Min Growth in each year called out',
+    caption = "Plot: @itsnatrivera      Data: Yahoo Finance via Kaggle (by Evan Gower)") +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank() , 
+        plot.title = element_text(size=20 , face='bold' , color='dodger blue'),
+        #plot.title = element_markdown() , 
+        #plot.caption = element_markdown() ,
+        legend.position="bottom",
+        legend.title = element_blank()) 
+stock_plot
+  
+```
+
+
+
+```{r}
+stocks %>% 
+  filter(year < 2023) %>% 
+  ggplot(aes(x=date,y=yr_change_per , color=stock_symbol)) +
+  geom_line() +
+  facet_wrap(~stock_symbol , ncol=5 , scales="free")
+```
+
+
+
+
+
+
