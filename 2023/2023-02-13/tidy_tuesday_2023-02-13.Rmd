@@ -1,0 +1,236 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(gt)
+library(scales)
+library(ggtext)
+
+theme_set(theme_minimal())
+```
+
+
+
+```{r}
+# pull data from github
+age_gaps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-14/age_gaps.csv')
+
+# add decade to data
+age_gaps$decade <-age_gaps$release_year - (age_gaps$release_year %% 10 ) 
+```
+
+
+
+```{r}
+# barplot
+age_gaps %>% 
+  group_by(age_difference) %>% 
+  count() %>% 
+  ggplot(aes(x=age_difference , y=n)) +
+  geom_bar(stat='identity')
+```
+
+
+
+```{r}
+# barplot by decade
+age_gaps %>% 
+  group_by(age_difference , decade) %>% 
+  count() %>% 
+  ggplot(aes(x=age_difference , y=n)) +
+  geom_bar(stat='identity') +
+  facet_wrap(~decade , nrow=1) +
+  coord_flip()
+```
+
+
+
+```{r}
+# create a summary dataset for each actor 
+act1 <- age_gaps %>% 
+  mutate(actor = actor_1_name , diff = age_difference , gender = character_1_gender ) %>% 
+  select(actor , diff , gender , release_year) 
+
+act2 <- age_gaps %>% 
+  mutate(actor = actor_2_name , diff = age_difference *-1 , gender = character_2_gender ) %>% 
+  select(actor , diff , gender , release_year) 
+
+gaps <- union(act1,act2)
+
+actor_gaps <- gaps %>% 
+  group_by(actor , gender ) %>% 
+  summarise(gap = mean(diff) , n = n()) 
+actor_gaps
+```
+
+
+
+```{r}
+
+# add the min and max movie release year per actor
+actors_min <- gaps %>% 
+  group_by(actor) %>% 
+  filter(release_year == min(release_year)) %>% 
+  mutate(min = release_year) %>% 
+  select(actor , min) %>% 
+  unique()
+
+actors_max <- gaps %>% 
+  group_by(actor) %>% 
+  filter(release_year == max(release_year)) %>% 
+  mutate(max = release_year) %>% 
+  select(actor , max) %>% 
+  unique()
+
+actor_summ <- left_join(actors_min , actors_max , by=('actor') )
+
+actor_gaps <- actor_gaps %>% 
+  left_join(actor_summ , by=('actor'))
+```
+
+
+
+
+```{r}
+actor_gaps %>% 
+  group_by(gender) %>% 
+  count()
+```
+
+
+```{r}
+actor_gaps %>% 
+  #filter(n >= 5) %>% 
+  ggplot(aes(x=n , y=gap , color=gender , label=actor) ) +
+  geom_point() 
+```
+
+
+
+```{r}
+actor_gaps %>% 
+  filter(n >= 10) %>% 
+  ggplot(aes(x=n , y=gap ,  color=gender , label=actor) ) +
+  geom_text(check_overlap = 0 , size=3 , show.legend = FALSE) +
+  theme()
+```
+
+
+
+
+
+```{r}
+# show top 10 actors by absolute age gap
+top_10 <- actor_gaps %>% 
+  ungroup() %>% 
+  filter(n>= 5) %>% 
+  mutate(abs_gap = abs(gap)) %>% 
+  arrange(desc(abs_gap)) %>% 
+  head(10) 
+top_10
+```
+
+
+
+
+
+
+```{r}
+# load data from Bechdel_Test
+movies_b <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-03-09/movies.csv')
+
+movies_c <- movies_b %>% 
+  select(title , binary , year)
+```
+
+
+
+```{r}
+# join Bechdel_Test data to age_gap data
+age_gaps2 <- age_gaps %>% 
+  left_join(movies_c , by=c('movie_name' = 'title'  , 'release_year' = 'year')) %>% 
+  mutate(Bechdel_Test = ifelse(is.na(binary) , 'NO TEST' ,binary ))
+```
+
+
+
+
+```{r}
+# function to visualize age gaps by actor
+act_fun <- function(str) {
+  
+  group.colors <- c('red' , 'dark blue' , 'orange')
+
+  act <- str
+  act_tmp <- age_gaps2 %>% 
+  filter(actor_1_name == act | actor_2_name == act) %>% 
+  mutate(act_1_name = ifelse(actor_1_name==act,act,actor_2_name) , 
+         act_2_name = ifelse(actor_2_name==act,actor_1_name,actor_2_name) , 
+         act_1_age = ifelse(actor_1_name==act,actor_1_age,actor_2_age) , 
+         act_2_age = ifelse(actor_2_name==act,actor_1_age,actor_2_age) ,
+         label = paste0(act_2_name ,' (', act_2_age,')')
+         )
+  
+  acts <- actor_gaps %>% 
+    filter(actor == act)
+  
+  xmin <- min(act_tmp$act_2_age) -5
+  xmax <- max(act_tmp$act_1_age) + 10
+  
+  act_title <- paste0('<span style="color:dodgerblue;  font-size:35px;">' , act , '</span><br>')
+  act_subtitle <- paste0('<span style="">Appears in **' , acts[1,]$n , 
+                         '** movies in the dataset and has an average age gap of **' ,  round(acts[1,]$gap,1) , '** years.</span>' ,
+                 '<br><span style="">Plotted with the romantic interest in movies. [Actor] (age at time of movie)</span><br>')
+  caps <-paste0( 'Plot: <strong>@itsnatrivera</strong> Data: <strong>hollywoodagegap.com</strong> & <strong>Bechdeltest.com</strong>  via <strong>#TidyTuesday</strong>' )
+  
+  act_tmp %>%  
+    ggplot(aes(x=act_1_age , y=act_1_age ,  label=label )) +
+    geom_pointrange(aes(y=act_1_age , xmin=act_2_age  , xmax=act_1_age), linewidth=3,color='dodger blue' ) +
+    geom_point(aes(x=act_2_age , y=act_1_age ,color=Bechdel_Test ) , size=3) +
+    geom_text(aes(x=act_2_age-1.5 , y=act_1_age+0.5) , size=2.75,  check_overlap = 1) +
+    geom_abline(color='dodger blue' , size=0.5 , linetype='dotted') +
+    scale_color_manual( values=group.colors) +
+    labs(title=act_title , 
+           subtitle = act_subtitle , 
+           caption=caps) +
+    scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+    expand_limits(x=xmin) +
+    theme_minimal() +
+    theme(axis.title = element_blank() , 
+          legend.position = 'bottom' , 
+          plot.title = ggtext::element_textbox_simple(),
+          plot.subtitle = ggtext::element_textbox_simple(),
+          plot.caption = ggtext::element_textbox_simple() , 
+          panel.grid.minor = element_blank()) 
+  
+}
+
+```
+
+
+
+```{r }
+act_fun('Keanu Reeves')
+```
+
+
+
+
+```{r}
+top_10
+```
+
+
+
+
+
+
+
+
+
+
