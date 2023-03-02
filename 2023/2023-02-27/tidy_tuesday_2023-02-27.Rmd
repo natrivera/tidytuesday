@@ -1,0 +1,168 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+
+```{r}
+library(tidyverse)
+library(ggimage)
+library(rsvg)
+library(scales)
+
+theme_set(theme_minimal())
+```
+
+
+
+
+```{r}
+afrisenti <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/afrisenti.csv')
+languages <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/languages.csv')
+language_scripts <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/language_scripts.csv')
+language_countries <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/language_countries.csv')
+country_regions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-02-28/country_regions.csv')
+
+
+flag_db <- read.csv("https://query.data.world/s/mms7qnsv5v73l2uec2m7w6pk25s3i3", header=TRUE, stringsAsFactors=FALSE)
+
+eswa <- 'https://upload.wikimedia.org/wikipedia/commons/f/fb/Flag_of_Eswatini.svg'
+
+flag_db <- rbind(flag_db , data.frame(Country= 'Eswatini' , Images.File.Name = '' , ImageURL= eswa) )
+```
+
+
+
+
+
+```{r}
+afri_senti_agg <- afrisenti |>
+  group_by(language_iso_code, label) |>
+  count()
+
+afri_senti_tot_agg <- afrisenti |>
+  group_by(language_iso_code) |>
+  count() |>
+  rename(tot_n=n)
+
+cools <- c('negative' = '#F79824' , 'neutral' = '#D6BBC0' , 'positive'='#2176FF')
+
+```
+
+
+```{r}
+plt_title <- paste0('African Language Tweet Sentiment<span>    </span>' , 
+                       '<span style="color:#2176FF;">Positive </span>',
+                       '<span style="color:#D6BBC0;">Neutral </span>',
+                       '<span style="color:#F79824;">Negative</span>')
+
+afri_bar <- afri_senti_tot_agg |>
+  #left_join(afri_senti_tot_agg , by='language_iso_code') |>
+  ggplot(aes(y=tot_n,x=reorder(language_iso_code,tot_n), label=tot_n)) +
+  geom_bar(stat='identity' , show.legend = FALSE , fill='#72DDF7' , color='black') +
+  #scale_fill_manual(values=cools) +
+  geom_text(nudge_y = 2000) +
+  labs(title = plt_title ,  y='Tweet Counts') +
+  theme(
+    axis.title.x = element_blank(),
+    #axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_markdown(size = 20 , face='bold')
+    )
+
+afri_bar
+```
+
+
+
+```{r}
+afri_bar_fill <- afri_senti_agg |>
+  left_join(afri_senti_tot_agg , by='language_iso_code') |>
+  mutate(n_per = n/tot_n) |>
+  ggplot(aes(y=n_per,x=reorder(language_iso_code,n),fill=label , label=label_percent(accuracy=1)(n_per))) +
+  geom_bar(stat='identity' , position = position_stack() , color='black' , show.legend = FALSE) +
+  geom_text(position = position_stack(vjust=0.5)) +
+  scale_fill_manual(values=cools) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 5L)) +
+  labs(y='% of Sentiment') +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    panel.grid = element_blank()
+  )
+
+afri_bar_fill
+```
+
+
+
+
+```{r}
+plt_caption <- 'Plot: **Nat Rivera @itsnatrivera**<span>    </span>Data: **AfriSenti via #TidyTuesday**'
+
+afri_count <- language_countries |> 
+  left_join(flag_db , by=c('country'='Country')) |>
+  left_join(languages , by='language_iso_code') |>
+  left_join(afri_senti_tot_agg , by='language_iso_code') |>
+  group_by(language) |>
+  mutate(rank = dense_rank(country)) |>
+  ggplot(aes(y=rank , x=reorder(language , tot_n) , label=country  )) +
+  geom_image( aes(image=ImageURL), size=0.05 , asp=4) +
+  geom_text(vjust=3.5) +
+  scale_x_discrete(position = "top") +
+  scale_y_reverse(limits=c(4.5,1)) +
+  labs(caption = plt_caption , 
+       y='Countries that use Language') +
+  theme(
+    axis.title.x = element_blank(),
+    axis.text.y = element_blank(),
+    axis.text.x = element_blank(),
+    panel.grid = element_blank(),  
+    plot.caption = element_markdown(size=12)
+    )
+
+afri_count
+```
+
+
+
+
+
+```{r}
+plt <- ggarrange(afri_bar , afri_bar_fill, afri_count   , ncol=1 , heights = c(3,3,4) )
+plt
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+
+
+
