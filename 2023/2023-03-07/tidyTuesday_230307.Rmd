@@ -12,6 +12,10 @@ library(gt)
 library(gtExtras)
 library(glue)
 library(svglite)
+library(sf)
+library(rnaturalearth)
+library(showtext)
+
 
 ```
 
@@ -44,7 +48,7 @@ numbats |>
 # function that will return html formatted bar chart
 bar_chart <- function(value, color = "red", display_value = '&nbsp;'){
   
-  vals <- value/3
+  vals <- value/2
   
   # html of two spans with bar chart
   glue::glue('<span style=\"display: inline-block; direction: ltr; border-radius: 4px; ' , 
@@ -65,11 +69,185 @@ science_agg <- numbats |>
   summarise(n=n() , .groups = 'drop') |>
   pivot_wider(names_from = scientificName , values_from = n)
 
+
+
+
 nrecords <- nrow(numbats)
 yr_na <- sum(is.na(numbats$year))
 yr_na_percent <-round(  (yr_na / nrecords)*100 , 0)
 
 ```
+
+
+
+
+
+```{r}
+oceania <- ne_countries(type="countries",continent = "oceania",returnclass = "sf") |>
+  filter(sovereignt == "Australia")
+
+numbats_sf <- numbats |>
+  filter(!is.na(decimalLongitude) ,!is.na(decimalLatitude) ) |>
+  st_as_sf( coords=c("decimalLongitude","decimalLatitude")) |>
+  st_set_crs(st_crs(oceania))
+
+
+oceania %>% 
+  ggplot() + 
+  geom_sf( size=1, color="black") +
+  geom_sf(data=numbats_sf , aes(size=2) ,  show.legend = FALSE) +
+  coord_sf(xlim = c(114,153), ylim = c(-40,-13))+
+  facet_wrap(~dataResourceName , ncol = 4 ) +
+  theme_void() +
+  theme(plot.background = element_blank(),
+        panel.background = element_blank())
+```
+
+
+
+
+```{r}
+
+map_plt <- function(name) {
+  plt_dat <- numbats |> filter(dataResourceName == name)
+
+  out_plt <- plt_dat |>
+    filter(!is.na(decimalLongitude) ,!is.na(decimalLatitude) ) |>
+    st_as_sf( coords=c("decimalLongitude","decimalLatitude")) |>
+    st_set_crs(st_crs(oceania)) |>
+    ggplot() +
+    geom_sf(data=oceania, size=1, color="black") +
+    geom_sf(aes(size=1.5) ,  show.legend = FALSE) +
+    coord_sf(xlim = c(114,153), ylim = c(-40,-13))+
+    theme_void() +
+    theme(plot.background = element_blank(),
+          panel.background = element_blank())
+
+#out
+
+trim = FALSE
+
+out_name <- file.path( tempfile(pattern = "file", tmpdir = tempdir(), fileext = ".svg"))
+
+ggsave( out_name, plot = out_plt, dpi = 25.4 )
+
+on.exit(file.remove(out_name), add = TRUE)
+
+img_plot <- out_name %>%
+      readLines() %>%
+      paste0(collapse = "") %>%
+      gt::html()
+
+#mapply(plot_fn_spark, trim, list_data_in, SIMPLIFY = FALSE)
+
+img_plot
+  
+}
+
+```
+
+
+
+```{r}
+map_plt('Western Australian Museum provider for OZCAM')
+```
+
+
+
+
+```{r}
+numbat_map <- numbats |>
+  group_by(dataResourceName) |>
+  mutate(mapp = map_plt(dataResourceName)) |>
+  select(dataResourceName , mapp) |>
+  unique()
+```
+
+
+
+
+```{r}
+oceania <- ne_countries(type="countries",continent = "oceania",returnclass = "sf") |>
+  filter(sovereignt == "Australia")
+
+
+gt_plt_map <- function(gt_object,
+                        column,
+                        type = "density",
+                        fig_dim = c(5, 30),
+                        line_color = "black",
+                        fill_color = "grey",
+                        bw = NULL,
+                        trim = FALSE,
+                        same_limit = TRUE) {
+  #is_gt_stop(gt_object)
+  
+  # convert tidyeval column to bare string
+  col_bare <- dplyr::select(gt_object[["_data"]], {{ column }}) %>% names()
+  
+  # segment data with bare string column name
+  list_data_in <- gt_index(gt_object, col_bare, as_vector = TRUE)
+  
+  # convert to a single vector
+  data_in <- unlist(list_data_in)
+  
+  #stopifnot("Specified column must contain list of values" = any(class(list_data_in) %in% "list"))
+  #stopifnot("Specified column must be numeric" = is.numeric(data_in))
+  #stopifnot("You must indicate the `type` of plot as one of 'boxplot', 'histogram', 'rug_strip' or 'density'." = isTRUE(type %in% c("boxplot", "rug_strip", "histogram", "density")))
+  
+  # range to be used for plotting if same axis
+  #total_rng <- grDevices::extendrange(data_in, r = range(data_in, na.rm = TRUE), f = 0.02)
+  
+  plot_fn_spark <- function(trim , list_data_in) {
+    
+    vals <- as.character(stats::na.omit(list_data_in))
+    
+    input_data <- dplyr::tibble(
+      x = 1:length(vals),
+      y = vals
+    )
+    
+    plt_dat <- numbats |> filter(dataResourceName == input_data$y)
+
+    plot_out <- plt_dat |>
+      filter(!is.na(decimalLongitude) ,!is.na(decimalLatitude) ) |>
+      st_as_sf( coords=c("decimalLongitude","decimalLatitude")) |>
+      st_set_crs(st_crs(oceania)) |>
+      ggplot() +
+      geom_sf(data=oceania, color="black") + # oceania map
+      geom_sf(  show.legend = FALSE) + # plot points
+      coord_sf(xlim = c(114,153), ylim = c(-40,-13))+
+      theme_void() +
+      theme(plot.background = element_blank(), panel.background = element_blank())
+    
+    out_name <- file.path(tempfile(pattern = "file", tmpdir = tempdir(), fileext = ".svg") )
+    
+    ggsave( out_name, plot = plot_out, dpi = 25.4, height = fig_dim[1], width = fig_dim[2], units = "mm")
+    
+    img_plot <- out_name %>%
+      readLines() %>%
+      paste0(collapse = "") %>%
+      gt::html()
+    
+    on.exit(file.remove(out_name), add = TRUE)
+    
+    img_plot
+  } # end of plot_fn_spark
+  
+  text_transform(
+    gt_object,
+    locations = cells_body(columns = {{ column }}),
+    fn = function(x) {
+      mapply(plot_fn_spark, trim, list_data_in ,  SIMPLIFY = FALSE)
+    }
+  )
+}
+```
+
+
+
+
+
 
 
 ```{r}
@@ -119,43 +297,43 @@ tbl
 
 
 ```{r}
-tbl_title <- '**Numbat Sightings in Australia**'
-tbl_subtitle <- glue('***{yr_na_percent}%*** ({yr_na}/{nrecords}) of the data is missing timespamps with most comming from Western Australian Museum provider for OZCAM')
-tbl_caption <- '<b>Data: </b>Atlas of Living Australia (tidytuesday) | <b>Table: </b> Nat Rivera @Itsnatrivera'
+tbl_title <- str_glue('**Numbat Sightings in Australia**')
+tbl_subtitle <- str_glue('***{yr_na_percent}%*** ({yr_na}/{nrecords}) of the data is missing timespamps with most comming from Western Australian Museum provider for OZCAM')
+tbl_caption <- str_glue('<b>Data: </b>Atlas of Living Australia (tidytuesday) | <b>Table: </b> Nat Rivera @Itsnatrivera')
 
 tbl <- numbats |>
   mutate( year = ifelse(year < 2006 , 2005 , year)) |>
   group_by(dataResourceName  ) |>
   summarize(yr_dist=list(year) , .groups = 'drop') |>
+  mutate(resource = dataResourceName) |>
   left_join(numbats_agg , by=c('dataResourceName')) |>
   left_join(science_agg , by='dataResourceName' ) |>
   mutate(bar_chart = bar_chart(Total, color = "#F6AE2D" , display_value = Total ),
         bar_chart = map(bar_chart, ~gt::html(as.character(.x))) ) |>
   arrange(desc(Total)) |>
-  select(c(1,7,4,2,5,6)) |>
+  select(c(1,3,8,2,5,6,7)) |>
   gt() |>
   gt_plt_dist(yr_dist  , fig_dim = c(5, 70) , fill_color = "#1E96FC") |>
-  #gt_plt_bar(column = Total) |>
-  tab_spanner( label = md("**Myrmecobius Fasciatus**"), columns = c(5,6) ) |>
-  tab_spanner( label = md("**Year**"), columns = c(3,4) ) |>
+  gt_plt_map(column = resource , fig_dim = c(5,22)) |>
+  tab_spanner( label = md("**Myrmecobius Fasciatus**"), columns = c(6,7) ) |>
+  tab_spanner( label = md("**Year**"), columns = c(4,5) ) |>
+  tab_spanner( label = md("**Data Resource**"), columns = c(1,2,3) ) |>
   cols_align(align = "left" , columns = c(bar_chart)) |>
   cols_align(align = 'right' , columns = c(1) )  |>
-  cols_width(yr_dist~px(300)  )  |>
-  sub_missing(columns = c(5,6 ), missing_text = "0" ) |>
+  cols_width(bar_chart~px(200)  )  |>
+  sub_missing(columns = c(6,7), missing_text = "0" ) |>
   cols_label(`Myrmecobius fasciatus` = "-" , 
              `Myrmecobius fasciatus rufus` = "Rufus"  ,
              yr_dist = '<05  06  08  10  12  14  16  18  20  22' , 
-             yr_na = 'Missing' , bar_chart = 'Total' , dataResourceName = 'Data Resource') |>
+             yr_na = 'Missing' , bar_chart = 'Total' , dataResourceName = 'Name' , resource = 'Map' ) |>
   data_color(columns = yr_na, apply_to = 'fill', 
              colors = scales::col_numeric(
                       palette = c("#C2D3CD", "#34435E"),
                       domain = c(0, 190)
              ) ) |>
   tab_header(title = md(tbl_title) , subtitle = md(tbl_subtitle)) |>
-  tab_source_note(source_note = md(tbl_caption) )
+  tab_source_note(source_note = md(tbl_caption) ) 
 
-  
-  #select(1,bar_chart , c(20,19) , c(2:18) , c(22,23) ) |>
 
 
 tbl
