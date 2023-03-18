@@ -160,7 +160,7 @@ rate_96 <- year_agg[year_agg$year == 1996 ,  ]
 rate_22 <- year_agg[year_agg$year == 2022 ,  ]
 
 plt_title <- 'European Drug Development'
-plt_subtitle <- 'Percentage of drugs authorized vs refused or withdrawn'
+plt_subtitle <- 'Percentage of drugs authorized vs (refused or withdrawn)'
 auth_plt <- year_agg |> 
   ggplot(aes(x=year , y=auth_rate)) + 
   geom_smooth(method = 'loess' , formula = 'y ~ x' , se = FALSE , color='dodgerblue' , size=2) + 
