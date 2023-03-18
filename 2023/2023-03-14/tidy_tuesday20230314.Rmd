@@ -1,0 +1,197 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(visdat)
+library(naniar)
+library(gt)
+library(RecordLinkage)
+library(ggpubr)
+library(ggtext)
+library(scales)
+
+theme_set(theme_minimal())
+
+```
+
+
+```{r}
+drugs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-14/drugs.csv')
+```
+
+
+
+```{r}
+vis_dat(drugs)
+```
+
+
+```{r}
+naniar::vis_miss(drugs |> filter(category == 'human'))
+```
+
+
+
+```{r}
+str(drugs)
+```
+
+
+
+```{r}
+drugs |> group_by(authorisation_status) |> count() 
+```
+
+
+
+
+```{r}
+drugs |> mutate(comp_name = str_trim(toupper(marketing_authorisation_holder_company_name))  
+                ,comp_name = str_replace_all(comp_name, "[[:punct:]]", "")
+                ) |> 
+  group_by(comp_name) |> 
+  count() 
+```
+
+
+
+```{r}
+comp_names <- drugs |>
+  mutate(comp_name = str_trim(toupper(marketing_authorisation_holder_company_name))  
+                ,comp_name = str_replace_all(comp_name, "[[:punct:]]", "")
+                ) |>
+  select(comp_name) |>
+  unique() 
+
+
+comp_names_scores <- comp_names |>
+  cross_join(comp_names  ) |>
+  rename(comp_name = comp_name.x , comp2 = comp_name.y) |>
+  mutate(score = levenshteinSim(comp_name , comp2)  , 
+         score2=jarowinkler(comp_name , comp2) , 
+         score3 = levenshteinDist(comp_name , comp2)) 
+
+pharma_names <- comp_names_scores |>
+  filter(score <1) |>
+  group_by(comp_name) |>
+  filter(score == max(score) ) |>
+  mutate(pharma_comp = max(comp_name , comp2)  , comp2 =  min(comp_name , comp2)) |>
+  ungroup() |>
+  select(pharma_comp , comp2 , score) |>
+  unique() |>
+  arrange(desc(score))
+  
+```
+
+
+
+```{r}
+year_agg <- drugs |>
+  mutate(comp_name = str_trim(toupper(marketing_authorisation_holder_company_name))  
+                ,comp_name = str_replace_all(comp_name, "[[:punct:]]", "") ,
+         date = ifelse(authorisation_status == 'refused' , 
+                       (date_of_refusal_of_marketing_authorisation) , (marketing_authorisation_date) ) , 
+         date = as.POSIXct.Date(date) ,
+         year = year(date) , 
+         therapeutic_area = (str_split(therapeutic_area , ';'))) |>
+  select(comp_name , date , year , therapeutic_area , authorisation_status , medicine_name) |>
+  mutate( one=1 ) |>
+  filter(year<2023) |>
+  pivot_wider(names_from = authorisation_status , values_from = one  , values_fn = mean , values_fill = 0) |>
+  mutate(total = 1 ) |>
+  group_by(year ) |>
+  summarise(n=n() , n2=sum(total) ,
+            hold_names = n_distinct(comp_name) , 
+            #theraputic_areas = sum(theraputic_areas) ,
+            meds = n_distinct(medicine_name) ,  
+            auth_rate = sum(authorised)/sum(total) ,
+            withdraw_rate = sum(withdrawn)/sum(total) , 
+            refuse_rate = sum(refused)/sum(total)) 
+ 
+yr_highlight <- year_agg |> 
+  mutate(highlight = ifelse(year %in% c(1996,2022,2009) , 'yes' , 'no')) |>
+  filter(highlight == 'yes')
+
+```
+
+
+
+
+```{r}
+
+plt_subtitle <- paste0('<span style="color:#1E90FF;">Authorised</span>  ',
+                       '<span style="color:#80DED9;">Refused</span>  ',
+                       '<span style="color:#1B4079;">Withdrawn</span>')
+plt_caption <- paste('**Data:** European Medicines Agency via #TidyTuesday' , '**Plot:** Nat Rivera @Itsnatrivera')
+
+yr_plt <- drugs |>
+  mutate(comp_name = str_trim(toupper(marketing_authorisation_holder_company_name))  
+                ,comp_name = str_replace_all(comp_name, "[[:punct:]]", "") ,
+         date = ifelse(authorisation_status == 'refused' , 
+                       (date_of_refusal_of_marketing_authorisation) , (marketing_authorisation_date) ) , 
+         date = as.POSIXct.Date(date) ,
+         year = year(date) , 
+         therapeutic_area = (str_split(therapeutic_area , ';'))) |>
+  select(comp_name , date , year , therapeutic_area , authorisation_status , medicine_name) |>
+  filter(year<2023) |>
+  group_by(year , authorisation_status) |>
+  count() |>
+  ggplot(aes(x=year , y=n , fill=authorisation_status )) +
+  geom_bar(stat='identity' , show.legend = FALSE , color='black') +
+  geom_text(data=yr_highlight , aes(x=year , y=n , label=n) , inherit.aes = FALSE , nudge_y = 5) +
+  scale_fill_manual(values=c('#1E90FF' , '#1B4079' , '#80DED9')) +
+  labs( subtitle= md(plt_subtitle) , caption = md(plt_caption) , x='' , y='') +
+  scale_x_continuous(breaks = c(1995,2000,2005,2010,2015,2020)) +
+  theme(plot.subtitle = element_markdown(face='bold' , margin=margin(0,10,10,20))  ,
+        plot.caption = element_textbox_simple(size=12) , 
+        panel.grid.minor = element_blank())
+yr_plt
+```
+
+
+
+```{r}
+
+rate_96 <- year_agg[year_agg$year == 1996 ,  ]
+rate_22 <- year_agg[year_agg$year == 2022 ,  ]
+
+plt_title <- 'European Drug Development'
+plt_subtitle <- 'Percentage of drugs authorized vs refused or withdrawn'
+auth_plt <- year_agg |> 
+  ggplot(aes(x=year , y=auth_rate)) + 
+  geom_smooth(method = 'loess' , formula = 'y ~ x' , se = FALSE , color='dodgerblue' , size=2) + 
+  geom_point(size=0.5 , alpha=0.5) +
+  geom_text(data=rate_96 , aes(x=year, y=auth_rate, label=percent(auth_rate)) , nudge_y = -0.05 , nudge_x = -1) +
+  geom_curve(data=rate_96 , aes(x=year-1 , y=auth_rate-0.03 , xend=year, yend=auth_rate) , curvature=-0.3) +
+  geom_text(data=rate_22 , aes(x=year, y=auth_rate, label=percent(auth_rate)) , nudge_y = 0.03 , nudge_x = -2) +
+  geom_curve(data=rate_22 , aes(x=year-1.5 , y=auth_rate+0.03 , xend=year, yend=auth_rate) , curvature=-0.4) +
+  scale_y_continuous(labels=percent) +
+  labs(x='' , y='' , title=plt_title , subtitle = plt_subtitle) +
+  scale_x_continuous(breaks = c(1995,2000,2005,2010,2015,2020)) +
+  theme(plot.title = element_textbox_simple(size = 22 , margin=margin(0,10,10,0)) , 
+        panel.grid.minor = element_blank())
+
+auth_plt
+```
+
+
+```{r}
+plt <- ggarrange( auth_plt , yr_plt , ncol = 1 , heights = c(1,2) )
+plt
+```
+
+
+
+
+
+
+
+
+
+
+
+
