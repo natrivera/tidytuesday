@@ -123,7 +123,7 @@ yr_highlight <- year_agg |>
 
 ```{r}
 
-plt_subtitle <- paste0('<span style="color:#1E90FF;">Authorised</span>  ',
+plt_subtitle <- paste0('<span style="color:#1E90FF;">Authorized</span>  ',
                        '<span style="color:#80DED9;">Refused</span>  ',
                        '<span style="color:#1B4079;">Withdrawn</span>')
 plt_caption <- paste('**Data:** European Medicines Agency via #TidyTuesday' , '**Plot:** Nat Rivera @Itsnatrivera')
