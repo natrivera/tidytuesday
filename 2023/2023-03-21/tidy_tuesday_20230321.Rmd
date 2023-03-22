@@ -1,0 +1,93 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+
+```
+
+
+
+```{r}
+languages <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-21/languages.csv')
+```
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+programming <- languages |> filter(type=='pl')
+```
+
+
+
+```{r}
+programming |>
+  ggplot(aes(x=appeared , y=number_of_users)) +
+  geom_point()
+```
+
+
+
+
+```{r}
+r_dat <- programming |>
+  filter(title == 'R') |>
+  select(title , wikipedia_related) |>
+  separate_rows(wikipedia_related, sep = " ") |>
+  mutate(wikipedia_related = toupper(wikipedia_related)) |>
+  rename(lang = title) |>
+  inner_join(programming |> select(title , pldb_id )  , by=c('wikipedia_related'='title') ) |>
+  select(lang , wikipedia_related) |>
+  mutate(relationship = 'first')
+
+
+r_related <- r_dat |> select(wikipedia_related) 
+
+r_rela_dat <- programming |>
+  inner_join(r_related , by=c('title'='wikipedia_related'))
+
+r_seconds <- r_rela_dat |>
+  select(title , wikipedia_related) |>
+  separate_rows(wikipedia_related, sep = " ") |>
+  mutate(wikipedia_related = toupper(wikipedia_related)) |>
+  rename(lang = title) |>
+  inner_join(programming |> select(title , pldb_id )  , by=c('wikipedia_related'='title') ) |>
+  select(lang , wikipedia_related) |>
+  mutate(relationship = 'second')
+  
+
+relationships <- union(r_dat , r_seconds)
+
+nodes <- unique(union(relationships$wikipedia_related , relationships$lang))
+
+```
+
+
+
+```{r}
+nodes
+```
+
+
+
+
+```{r}
+out_rel <- toJSON(relationships)
+
+write_json(relationships , path = 'relationships.json')
+```
+
+
+
+
+
