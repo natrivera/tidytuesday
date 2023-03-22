@@ -24,7 +24,8 @@
 </head>
 
 <body>
-  <svg width="360" height="700"></svg>
+  <h1>Programming Languages that are related to R</h1>
+  <svg width="1200" height="650"></svg>
   <script src="https://d3js.org/d3.v4.min.js"></script>
   <script>
     //create somewhere to put the force directed graph
@@ -32,7 +33,7 @@
       width = +svg.attr("width"),
       height = +svg.attr("height");
 
-    var radius = 15;
+    var radius = 30;
     
     var nodes_data = [
       {"name":"S"},
@@ -114,8 +115,7 @@
         return d.name;
       });
 
-    var charge_force = d3.forceManyBody()
-      .strength(-500);
+    var charge_force = d3.forceManyBody().strength(-2000);
 
     var center_force = d3.forceCenter(width / 2, height / 2);
 
@@ -137,7 +137,8 @@
       .attr("class", "links")
       .selectAll("line")
       .data(links_data)
-      .enter().append("line")
+      .enter()
+      .append("line")
       .attr("stroke-width", 2)
       .style("stroke", linkColour);
 
@@ -151,20 +152,21 @@
       .attr("r", radius)
       .attr("fill", circleColour);
       
-    node.append("svg:text")
-      .attr("dx" , 0)
-      .attr("dy" , 0)
-      .attr("font-size" , "1em")
-      .text(function(d) {return d.name}) ;
-      
-    var texts = g.append("g")
-      .attr("class", "nodes")
-      .selectAll("circle")
+    var text = g.append("g")
+      .selectAll("text")
+      .attr("class", "text")
+      //.selectAll("circle")
       .data(nodes_data)
       .enter()
-      //.attr("dx" , 1)
-      //.attr("dy" , "1em")
-      .text(function(d) {return d.name}) ;
+      .append("text");
+      
+   var textLabels = text
+      .attr("x", function(d) { return d.x; })
+      .attr("y", function(d) { return d.y; })
+      .text( function (d) { return d.name })
+      .attr("font-family", "sans-serif")
+      .attr("font-size", "20px")
+      .attr("fill", "black");
       
 
     //add drag capabilities
@@ -239,6 +241,24 @@
         .attr("cy", function(d) {
           return d.y;
         });
+        
+      //update text positions each tick of the simulation
+      textLabels
+        .attr("x", function(d) {
+          return d.x;
+        })
+        .attr("y", function(d) {
+          return d.y;
+        });
+        
+      //update text positions each tick of the simulation
+      text
+        .attr("x", function(d) {
+          return d.x;
+        })
+        .attr("y", function(d) {
+          return d.y;
+        });
 
       //update link positions
       link
@@ -257,5 +277,4 @@
     }
   </script>
 </body>
-<h1>Programming Languages that are related to R</h1>
 </html>
