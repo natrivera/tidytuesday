@@ -5,6 +5,11 @@
   <meta charset="utf-8">
   <style>
   
+    body {
+      background-color: #324376;
+      color: #EDD2E0;
+    }
+  
     svg {
       display: block;
       margin: auto;
@@ -20,13 +25,25 @@
       stroke-width: 0px;
     }
     
+    .caption {
+      display: block;
+      margin: auto;
+    }
+    
   </style>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://kit.fontawesome.com/e88c05d9ca.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
-  <h1>Programming Languages that are related to R</h1>
+  <h1>Programming Languages related to R</h1>
   <svg width="1200" height="650"></svg>
-  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <div class="caption">
+    <i class="fa-solid fa-table"></i> Programming Language DataBase via #TidyTuesday &nbsp;&nbsp;       
+    <b>Graph:</b> Nat Rivera &nbsp;&nbsp;
+    <i class="fa-brands fa-twitter"></i> Itsnatrivera &nbsp;&nbsp;    
+    <i class="fa-brands fa-github"></i> natrivera
+  </div>
   <script>
     //create somewhere to put the force directed graph
     var svg = d3.select("svg"),
@@ -78,7 +95,6 @@
      {"source":"C","target":"LPC","relationship":"second"},
      {"source":"C","target":"PHP","relationship":"second"},
      {"source":"C","target":"MATLAB","relationship":"second"},
-     {"source":"MATLAB","target":"MATHLAB","relationship":"second"},
      {"source":"MATLAB","target":"C","relationship":"second"},
      {"source":"MATLAB","target":"APL","relationship":"second"},
      {"source":"MATLAB","target":"IDL","relationship":"second"},
@@ -166,7 +182,7 @@
       .text( function (d) { return d.name })
       .attr("font-family", "sans-serif")
       .attr("font-size", "20px")
-      .attr("fill", "black");
+      .attr("fill", textColour);
       
 
     //add drag capabilities
@@ -185,14 +201,23 @@
     zoom_handler(svg);
 
     /** Functions **/
+    
+    
+    function textColour(d) {
+      if (d.name == "R") {
+        return "white";
+      } else {
+        return "#F5DD90";
+      }
+    }
 
     //Function to choose what color circle we have
     //Let's return blue for males and red for females
     function circleColour(d) {
       if (d.name == "R") {
-        return "blue";
+        return "#586BA4";
       } else {
-        return "pink";
+        return "#01200F";
       }
     }
 
@@ -201,7 +226,7 @@
     //If the link type is "E" return red
     function linkColour(d) {
       if (d.relationship == "first") {
-        return "blue";
+        return "#EDD2E0";
       } else {
         return "black";
       }
