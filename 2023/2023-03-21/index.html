@@ -63,13 +63,6 @@
     get_data();
     
 
-    datalink = "relationships.json"
-    d3.json(datalink, function(err, graph) {
-      if (err) throw err;
-      nodes_data = graph.nodes;
-      links_data = graph.links;
-    });
-
     //set up the simulation and add forces
     var simulation = d3.forceSimulation()
       .nodes(nodes_data);
