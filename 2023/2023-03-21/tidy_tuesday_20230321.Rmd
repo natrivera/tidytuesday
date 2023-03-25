@@ -19,21 +19,7 @@ languages <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/
 
 
 ```{r}
-
-```
-
-
-
-```{r}
 programming <- languages |> filter(type=='pl')
-```
-
-
-
-```{r}
-programming |>
-  ggplot(aes(x=appeared , y=number_of_users)) +
-  geom_point()
 ```
 
 
@@ -66,9 +52,12 @@ r_seconds <- r_rela_dat |>
   mutate(relationship = 'second')
   
 
-relationships <- union(r_dat , r_seconds)
+relationships <- union(r_dat , r_seconds) |> 
+  rename(source = lang , target = wikipedia_related) |>
+  filter(target != 'R' )
 
-nodes <- unique(union(relationships$wikipedia_related , relationships$lang))
+nodes <- data.frame(unique(union(relationships$source , relationships$target)))
+colnames(nodes) <- c('name')
 
 ```
 
@@ -82,9 +71,8 @@ nodes
 
 
 ```{r}
-out_rel <- toJSON(relationships)
-
 write_json(relationships , path = 'relationships.json')
+write_json(nodes , path = 'nodes.json')
 ```
 
 
