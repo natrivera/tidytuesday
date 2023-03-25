@@ -3,7 +3,12 @@
 
 <head>
   <meta charset="utf-8">
-  <style>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-aFq/bzH65dt+w6FI2ooMVUpc+21e0SRygnTpmBvdBgSdnuTN7QbdgL+OapgHtvPp" crossorigin="anonymous">
+  <script type="text/javascript" src="relationships.json"></script>
+  <script type="text/javascript" src="nodes.json"></script>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://kit.fontawesome.com/e88c05d9ca.js" crossorigin="anonymous"></script>
+   <style>
   
     body {
       background-color: #324376;
@@ -31,18 +36,18 @@
     }
     
   </style>
-  <script src="https://d3js.org/d3.v4.min.js"></script>
-  <script src="https://kit.fontawesome.com/e88c05d9ca.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
-  <h1>Programming Languages related to R</h1>
-  <svg width="1200" height="650"></svg>
-  <div class="caption">
-    <i class="fa-solid fa-table"></i> Programming Language DataBase via #TidyTuesday &nbsp;&nbsp;       
-    <b>Graph:</b> Nat Rivera &nbsp;&nbsp;
-    <i class="fa-brands fa-twitter"></i> Itsnatrivera &nbsp;&nbsp;    
-    <i class="fa-brands fa-github"></i> natrivera
+  <div class="container">
+    <h1>Programming Languages related to R</h1>
+    <svg width="1200" height="650"></svg>
+    <div class="caption">
+      <i class="fa-solid fa-table"></i> Programming Language DataBase via #TidyTuesday &nbsp;&nbsp;       
+      <b>Graph:</b> Nat Rivera &nbsp;&nbsp;
+      <i class="fa-brands fa-twitter"></i> Itsnatrivera &nbsp;&nbsp;    
+      <i class="fa-brands fa-github"></i> natrivera
+    </div>
   </div>
   <script>
     //create somewhere to put the force directed graph
@@ -52,67 +57,10 @@
 
     var radius = 30;
     
-    var nodes_data = [
-      {"name":"S"},
-      {"name":"C"},
-      {"name":"APL"},
-      {"name":"MATLAB"},
-      {"name":"SPSS"},
-      {"name":"B"},
-      {"name":"BCPL"},
-      {"name":"CPL"},
-      {"name":"AMPL"},
-      {"name":"C--"},
-      {"name":"D"},
-      {"name":"LPC"},
-      {"name":"PHP"},
-      {"name":"MATHLAB"},
-      {"name":"R"},
-      {"name":"IDL"},
-      {"name":"APLX"},
-      {"name":"J"},
-      {"name":"K"},
-      {"name":"Q"},
-      {"name":"BASIC"},
-      {"name":"COBOL"},
-      {"name":"CIL"},
-      {"name":"RPL"},
-      {"name":"S-PLUS"}];
-
-
-   var links_data = [
-     {"source":"R","target":"S","relationship":"first"},
-     {"source":"R","target":"C","relationship":"first"},
-     {"source":"R","target":"APL","relationship":"first"},
-     {"source":"R","target":"MATLAB","relationship":"first"},
-     {"source":"R","target":"SPSS","relationship":"first"},
-     {"source":"C","target":"B","relationship":"second"},
-     {"source":"C","target":"BCPL","relationship":"second"},
-     {"source":"C","target":"CPL","relationship":"second"},
-     {"source":"C","target":"AMPL","relationship":"second"},
-     {"source":"C","target":"C--","relationship":"second"},
-     {"source":"C","target":"D","relationship":"second"},
-     {"source":"C","target":"LPC","relationship":"second"},
-     {"source":"C","target":"PHP","relationship":"second"},
-     {"source":"C","target":"MATLAB","relationship":"second"},
-     {"source":"MATLAB","target":"C","relationship":"second"},
-     {"source":"MATLAB","target":"APL","relationship":"second"},
-     {"source":"MATLAB","target":"IDL","relationship":"second"},
-     {"source":"MATLAB","target":"S","relationship":"second"},
-     {"source":"APL","target":"APLX","relationship":"second"},
-     {"source":"APL","target":"J","relationship":"second"},
-     {"source":"APL","target":"K","relationship":"second"},
-     {"source":"APL","target":"MATLAB","relationship":"second"},
-     {"source":"APL","target":"Q","relationship":"second"},
-     {"source":"APL","target":"S","relationship":"second"},
-     {"source":"APL","target":"BASIC","relationship":"second"},
-     {"source":"APL","target":"COBOL","relationship":"second"},
-     {"source":"APL","target":"C","relationship":"second"},
-     {"source":"APL","target":"CIL","relationship":"second"},
-     {"source":"APL","target":"RPL","relationship":"second"},
-     {"source":"S","target":"S-PLUS","relationship":"second"},
-     {"source":"S","target":"C","relationship":"second"},
-     {"source":"S","target":"APL","relationship":"second"}];
+    var links_data; 
+    var nodes_data;
+    
+    get_data();
     
 
     datalink = "relationships.json"
@@ -201,6 +149,12 @@
     zoom_handler(svg);
 
     /** Functions **/
+    
+    function get_data() {
+      
+      links_data = relationships_data;
+      nodes_data = nodes_data;
+    } // end of get data
     
     
     function textColour(d) {

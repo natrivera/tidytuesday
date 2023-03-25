@@ -30,24 +30,33 @@ r_dat <- programming |>
   filter(title == 'R') |>
   select(title , wikipedia_related) |>
   separate_rows(wikipedia_related, sep = " ") |>
-  mutate(wikipedia_related = toupper(wikipedia_related)) |>
+  mutate(wikipedia_related = toupper(wikipedia_related) , title = toupper(title)) |>
+  select(title , wikipedia_related) |>
   rename(lang = title) |>
-  inner_join(programming |> select(title , pldb_id )  , by=c('wikipedia_related'='title') ) |>
+  inner_join(programming |> 
+               select(title , pldb_id ) |> 
+               mutate(title = toupper(title))  , 
+             by=c('wikipedia_related'='title') ) |>
   select(lang , wikipedia_related) |>
   mutate(relationship = 'first')
 
 
 r_related <- r_dat |> select(wikipedia_related) 
 
-r_rela_dat <- programming |>
+r_rela_dat <- programming |> 
+  mutate(title = toupper(title)) |>
   inner_join(r_related , by=c('title'='wikipedia_related'))
 
 r_seconds <- r_rela_dat |>
   select(title , wikipedia_related) |>
   separate_rows(wikipedia_related, sep = " ") |>
-  mutate(wikipedia_related = toupper(wikipedia_related)) |>
+  mutate(wikipedia_related = toupper(wikipedia_related) , title = toupper(title)) |>
+  select(title , wikipedia_related) |>
   rename(lang = title) |>
-  inner_join(programming |> select(title , pldb_id )  , by=c('wikipedia_related'='title') ) |>
+  inner_join(programming |> 
+               select(title , pldb_id ) |> 
+               mutate(title = toupper(title))  , 
+             by=c('wikipedia_related'='title') ) |>
   select(lang , wikipedia_related) |>
   mutate(relationship = 'second')
   
@@ -79,3 +88,58 @@ write_json(nodes , path = 'nodes.json')
 
 
 
+
+
+
+
+
+
+```{r}
+all_dat <- programming |>
+  #filter(title == 'R') |>
+  select(title , wikipedia_related) |>
+  separate_rows(wikipedia_related, sep = " ") |>
+  mutate(wikipedia_related = toupper(wikipedia_related) , title = toupper(title)) |>
+  select(title , wikipedia_related) |>
+  rename(lang = title) |>
+  inner_join(programming |> 
+               select(title , pldb_id ) |> 
+               mutate(title = toupper(title))  , 
+             by=c('wikipedia_related'='title') ) |>
+  select(lang , wikipedia_related) |>
+  mutate(relationship = 'first')
+
+
+all_related <- all_dat |> select(wikipedia_related) 
+
+all_rela_dat <- programming |> 
+  mutate(title = toupper(title)) |>
+  inner_join(all_related , by=c('title'='wikipedia_related'))
+
+all_seconds <- all_rela_dat |>
+  select(title , wikipedia_related) |>
+  separate_rows(wikipedia_related, sep = " ") |>
+  mutate(wikipedia_related = toupper(wikipedia_related) , title = toupper(title)) |>
+  select(title , wikipedia_related) |>
+  rename(lang = title) |>
+  inner_join(programming |> 
+               select(title , pldb_id ) |> 
+               mutate(title = toupper(title))  , 
+             by=c('wikipedia_related'='title') ) |>
+  select(lang , wikipedia_related) |>
+  mutate(relationship = 'second')
+  
+
+all_relationships <- union(all_dat , all_seconds) |> 
+  rename(source = lang , target = wikipedia_related) 
+
+all_nodes <- data.frame(unique(union(all_relationships$source , all_relationships$target)))
+colnames(all_nodes) <- c('name')
+```
+
+
+
+```{r}
+write_json(all_relationships , path = 'all_relationships.json')
+write_json(all_nodes , path = 'all_nodes.json')
+```
