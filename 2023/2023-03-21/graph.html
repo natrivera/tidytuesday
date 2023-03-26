@@ -41,7 +41,11 @@
 <body>
   <div class="container">
     <h1>Programming Languages and their Related Languages</h1>
-    <svg width="1300" height="650"></svg>
+    
+      <label for="languages">Choose a Language:</label>
+      <select name="languages" id="languages" onchange="get_lang()"></select>
+
+    <div id="my_svg"></div>
     <div class="caption">
       <i class="fa-solid fa-table"></i> Programming Language DataBase via #TidyTuesday &nbsp;&nbsp;       
       <b>Graph:</b> Nat Rivera &nbsp;&nbsp;
@@ -50,36 +54,65 @@
     </div>
   </div>
   <script>
-  
+
+    var svg,width,height,raduis,simulation,link_forcecharge_force,center_force,g,link,node,text,textLabels,drag_handler,mysvg;
     var nodes_data;
     var links_data;
+    var selected_lang;
+    const all_links_unchaged = structuredClone(all_relationships_data);
+    const all_nodes_unchaged = structuredClone(all_nodes_data);
+    var h = 650;
+    var w = 1300;
     
+    // load data from json files
     get_data();
     
+    // filter data to only 1st relationships
     links_data = links_data.filter(function (entry) {return entry.relationship === 'first';});
     
     
-    //create somewhere to put the force directed graph
-      var svg = d3.select("svg"),
+    nodes_data = nodes_data.sort(function(a, b) {return a.name.localeCompare(b.name);});
+    // load the dropdown menu using the nodes json object
+    var selectElement = document.getElementById('languages');
+    nodes_data.map(item => languages.appendChild(new Option(item.name, item.name)).cloneNode(true));
+    
+    
+    // load the graph
+    load_svg();
+    
+
+    /** Functions **/
+    
+    
+    function load_svg() {
+      
+      d3.select("svg").remove();
+      
+      mysvg = d3.select("#my_svg")
+        .append("svg")
+        .attr("width", w)
+        .attr("height", h);
+      
+      //create somewhere to put the force directed graph
+      svg = d3.select("svg"),
         width = +svg.attr("width"),
         height = +svg.attr("height");
   
-      var radius = 30;
+      radius = 30;
       
      
-  
       //set up the simulation and add forces
-      var simulation = d3.forceSimulation()
+      simulation = d3.forceSimulation()
         .nodes(nodes_data);
   
-      var link_force = d3.forceLink(links_data)
+      link_force = d3.forceLink(links_data)
         .id(function(d) {
           return d.name;
         });
   
-      var charge_force = d3.forceManyBody().strength(-2000);
+      charge_force = d3.forceManyBody().strength(-2000);
   
-      var center_force = d3.forceCenter(width / 2, height / 2);
+      center_force = d3.forceCenter(width / 2, height / 2);
   
       simulation
         .force("charge_force", charge_force)
@@ -91,11 +124,11 @@
       simulation.on("tick", tickActions);
   
       //add encompassing group for the zoom
-      var g = svg.append("g")
+      g = svg.append("g")
         .attr("class", "everything");
   
       //draw lines for the links
-      var link = g.append("g")
+      link = g.append("g")
         .attr("class", "links")
         .selectAll("line")
         .data(links_data)
@@ -105,7 +138,7 @@
         .style("stroke", linkColour);
   
       //draw circles for the nodes
-      var node = g.append("g")
+      node = g.append("g")
         .attr("class", "nodes")
         .selectAll("circle")
         .data(nodes_data)
@@ -114,7 +147,7 @@
         .attr("r", radius)
         .attr("fill", circleColour);
         
-      var text = g.append("g")
+      text = g.append("g")
         .selectAll("text")
         .attr("class", "text")
         //.selectAll("circle")
@@ -122,7 +155,7 @@
         .enter()
         .append("text");
         
-     var textLabels = text
+     textLabels = text
         .attr("x", function(d) { return d.x; })
         .attr("y", function(d) { return d.y; })
         .text( function (d) { return d.name })
@@ -132,7 +165,7 @@
         
   
       //add drag capabilities
-      var drag_handler = d3.drag()
+      drag_handler = d3.drag()
         .on("start", drag_start)
         .on("drag", drag_drag)
         .on("end", drag_end);
@@ -145,49 +178,81 @@
         .on("zoom", zoom_actions);
   
       zoom_handler(svg);
+    } // end of load svvg
     
-
-
-    /** Functions **/
+    function get_lang() {
+      
+      selected_lang = document.getElementById("languages").value;
+      //alert(selected_lang);
+      
+      //links_data = all_relationships_data;
+      // filter data to only 1st relationships
+      links_data_one = structuredClone(all_links_unchaged);
+      links_data_one = links_data_one.filter(function (entry) {return entry.relationship === 'first'; });
+      links_data_one = links_data_one.filter(function (entry) {return entry.source === selected_lang; });
+      
+      var targets = Array.from( new Set(links_data_one.map(({target})=>target)) );
+      
+      links_data_two = structuredClone(all_links_unchaged);
+      links_data_two = links_data_two.filter(function (entry) {return entry.relationship === 'second'; });
+      links_data_two = links_data_two.filter(function (entry) {return targets.includes(entry.source ); });
+      links_data_two = links_data_two.filter(function (entry) {return entry.target != selected_lang; });
+      
+      links_data = links_data_two.concat(links_data_one)
+      
+      nodes_one = Array.from( new Set(links_data.map(({target})=>target)) );
+      nodes_two = Array.from( new Set(links_data.map(({source})=>source)) );
+      nodes_combined =  nodes_one.concat(nodes_two);
+      
+      noeds_temp = structuredClone(all_nodes_unchaged);
+      nodes_data = noeds_temp.filter(function (entry) {return nodes_combined.includes(entry.name ); });
+      
+      load_svg();
+    
+    }
 
     
     // grab data
     function get_data() {
       
-      links_data = all_relationships_data;
-      nodes_data = all_nodes_data;
+      links_data = structuredClone(all_relationships_data);
+      nodes_data = structuredClone(all_nodes_data);
      
     } // end of get_data
     
     
     function textColour(d) {
-      if (d.name == "R") {
+      if (d.name == selected_lang) {
         return "white";
       } else {
         return "#F5DD90";
       }
-    }
+    } // end of text color
 
     //Function to choose what color circle we have
-    //Let's return blue for males and red for females
     function circleColour(d) {
-      if (d.name == "R") {
-        return "#586BA4";
-      } else {
-        return "#01200F";
+      var tempcolor = '#01200F';
+      
+      if (d.name == selected_lang) {
+           tempcolor =  "#586BA4"
       }
-    }
+      else { 
+        tempcolor =  "#01200F";
+      }
+      
+      return tempcolor;
+    } // end of circle color
 
     //Function to choose the line colour and thickness
-    //If the link type is "A" return green
-    //If the link type is "E" return red
     function linkColour(d) {
+      var tempcolor = '#000000';
       if (d.relationship == "first") {
-        return "#EDD2E0";
+        tempcolor = "#EDD2E0";
       } else {
-        return "black";
+        tempcolor = "#000000";
       }
-    }
+      return tempcolor;
+    } // end of link color
 
     //Drag functions
     //d is the node
