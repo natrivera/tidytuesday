@@ -1,3 +1,3 @@
 
 
-![Plot](wc_table.png)
+![Plot](wc_table_v2.png)
