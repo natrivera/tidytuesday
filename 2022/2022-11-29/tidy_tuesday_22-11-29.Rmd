@@ -83,6 +83,9 @@ team_summ <-team_agg %>%
 
 ```
 
+```{r}
+team_agg %>% gt()
+```
 
 
 
