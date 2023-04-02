@@ -1,0 +1,126 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(plotly)
+
+theme_set(theme_minimal())
+
+```
+
+
+
+
+```{r}
+
+transitions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-28/transitions.csv')
+timezones <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-28/timezones.csv')
+timezone_countries <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-28/timezone_countries.csv')
+countries <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-03-28/countries.csv')
+
+
+world_coordinates <- map_data("world")
+```
+
+
+
+```{r}
+current_transition <- transitions |>
+  filter(begin <= '2023-03-30'  , end >= '2023-03-30' ) |>
+  mutate(hour_offset = offset/3600) 
+```
+
+
+```{r}
+combined_timezones <- timezone_countries |>
+  left_join(timezones , by='zone') |>
+  left_join(countries , by='country_code') |>
+  left_join(current_transition , by='zone') |>
+  mutate(comments = ifelse(is.na(comments) , '' , comments) , 
+         abbev = ifelse(substr(abbreviation , 0 ,1) %in% c('-' , '+' , '0') , '' , abbreviation ) , 
+         daylight = ifelse(dst == 'TRUE' , 'DST' , ' '))
+  
+```
+
+
+
+
+
+```{r}
+# geo styling
+g <- list(
+  scope = 'world',
+  projection = list(type = 'robinson'),
+  framecolor = 'dodgerblue',
+  showland = TRUE,
+  showocean = TRUE,
+  showcountries = TRUE,
+  landcolor = '#35CE8D',
+  coastlinecolor = toRGB("white"),
+  countrycolor = toRGB("white"),
+  resolution = 50,
+  lonaxis = list(showgrid = TRUE, dtick=10, gridcolor='black' , gridwidth=0.25)
+  )
+
+annot_dat <- data.frame(lat=0 , long=1 , 
+                        text="<br><b>Data: </b>IANA tz database #TidyTuesday  <b>Map: </b>Nat Rivera @Itsnatrivera")
+
+fig <- plot_geo(combined_timezones, lat = ~latitude, lon = ~longitude,  width = 900, height = 550) |> 
+  add_markers( text = ~(paste(  paste0(zone , '   ' , daylight), place_name, 
+                               paste0(abbev , '  Offset: ' , hour_offset) ,  
+                               comments, sep = "<br>") ),  hoverinfo = "text" ,
+               color = I('#4C4B63') , symbol = I("square"), size = I(6)  ) |> 
+  add_annotations(data = annot_dat , y = ~lat, x = ~long , text = ~text , inherit = FALSE , showarrow = FALSE) |>
+  layout(title = paste0('<br>' , '<b>Timezones Around the World</b><br>' , 'Markers are at Principal Locations'), 
+         geo = g  )
+
+ 
+fig
+```
+
+
+
+
+
+
+
+```{r}
+plt_map <- ggplot() +
+  geom_map(data = world_coordinates, map = world_coordinates, aes(  long, lat, map_id = region ),
+	color = "black", fill='#007500' ,  linewidth = 0.2) +
+  geom_point(data=combined_timezones , aes(x=longitude, y=latitude) , color='dodgerblue' , show.legend = FALSE) +
+  theme(
+        panel.grid.major = element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        plot.caption = element_text()
+    )
+
+#p <- ggplotly(plt_map)
+#p
+#ggplotly(plt_map)
+plt_map
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
