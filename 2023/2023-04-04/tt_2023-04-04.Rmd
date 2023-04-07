@@ -1,0 +1,151 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(camcorder)
+library(rsvg)
+library(ggimage)
+library(ggtext)
+
+theme_set(theme_minimal())
+
+gg_record(
+  dir = getwd(), # where to save the recording
+  device = "png", # device to use to save images
+  width = 4,      # width of saved image
+  height = 6,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+```{r}
+gg_resize_film(
+  height = 6,
+  width = 6,
+  units = "in",
+  dpi = 350
+)
+```
+
+
+```{r}
+gg_playback(
+  name = 'premier.gif',
+  first_image_duration = 5,
+  last_image_duration = 15,
+  frame_duration = .4,
+  image_resize = 800
+)
+```
+
+
+
+```{r}
+soccer <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-04/soccer21-22.csv')
+
+```
+
+
+```{r}
+sort(unique(soccer$HomeTeam))
+```
+
+
+```{r}
+# create a list of links for team images
+teamnames <- sort(unique(soccer$HomeTeam))
+links <- c(
+'https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg' , 
+'https://upload.wikimedia.org/wikipedia/en/f/f9/Aston_Villa_FC_crest_%282016%29.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_logo.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/6/62/Burnley_F.C._Logo.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/c/cc/Chelsea_FC.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/a/a2/Crystal_Palace_FC_logo_%282022%29.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/7/7c/Everton_FC_logo.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/5/54/Leeds_United_F.C._logo.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/2/2d/Leicester_City_crest.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/e/eb/Manchester_City_FC_badge.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/7/7a/Manchester_United_FC_crest.svg' , 
+'https://upload.wikimedia.org/wikipedia/en/5/56/Newcastle_United_Logo.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/1/17/Norwich_City_FC_logo.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/c/c9/FC_Southampton.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/b/b4/Tottenham_Hotspur.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/e/e2/Watford.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/c/c2/West_Ham_United_FC_logo.svg' ,
+'https://upload.wikimedia.org/wikipedia/en/f/fc/Wolverhampton_Wanderers.svg')
+
+team_links <- data.frame(teamnames,links)
+
+```
+
+
+
+
+```{r}
+soccer_groups <- soccer |>
+  select(HomeTeam , AwayTeam , HF, AF) |>
+  rowwise() |>
+  mutate(all_f = HF + AF , 
+         teams = paste0(min(HomeTeam,AwayTeam) , ',' , max(HomeTeam,AwayTeam) ) ) |>
+  separate(teams , into=c('team1' , 'team2') , sep=',') |>
+  group_by(team1,team2) |>
+  summarise(fouls = sum(all_f) , n = n() , .groups = 'drop') |>
+  left_join(team_links , by=c('team1'='teamnames'))
+
+```
+
+
+```{r}
+soccer_check <- soccer |>
+  select(HomeTeam , AwayTeam , HF, AF) |>
+  rowwise() |>
+  mutate(all_f = HF + AF , 
+         teams = paste0(min(HomeTeam,AwayTeam) , ',' , max(HomeTeam,AwayTeam) ) ) 
+
+soccer_check |> filter(teams == 'Aston Villa,Leicester')
+```
+
+
+
+```{r}
+plt_title <- 'Which Premier League Matches Saw the Most Fouls?'
+plt_subtitle <- '<br>Each square is the sum of fouls for both matches during the 2021-2022 season.<br>'
+plt_caption <- '**Data:** Evan Gower via #TidyTuesday **Images:** Wikipedia  **Plot:** Nat Rivera @Itsnatrivera'
+
+soccer_groups |>
+  ggplot(aes(x=team2 , y=team1 , fill=fouls , label=fouls)) +
+  geom_raster(show.legend = FALSE ) +
+  geom_text(color = "white", size = 2) +
+  geom_image( aes(x=20 ,image=links), size=0.03 , asp=1) +
+  geom_curve( aes(x=8.5 , y=18 , xend=4.5, yend=12) , curvature=0.25 , color='#84E296') +
+  geom_curve( aes(x=17.5 , y=6 , xend=14, yend=3) , curvature=0.25 , color='#84E296') +
+  geom_text(aes(x= 4, y=11 , label='Aston Villa v. Leicester\n(Highest)')) +
+  geom_text(aes(x= 13, y=2 , label='Newcastle v. West Ham\n(Lowest)')) +
+  scale_fill_gradient(low="dodgerblue", high="#0D2149") +
+  scale_x_discrete(position = "top" , limits=c(teamnames[-1],'')) +
+  scale_y_discrete(position = "right" , limits=rev ) +
+  labs(title=plt_title , subtitle = plt_subtitle  , caption=plt_caption) +
+  theme(
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.ticks.y=element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 90 , hjust = 0),
+        axis.title.y = element_blank(),
+        plot.title = element_markdown(size=14 , face='bold' , color='#0D2149'),
+        plot.subtitle =  element_markdown(size=8),
+        plot.caption = element_markdown()
+    ) 
+```
+
+
