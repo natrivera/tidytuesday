@@ -1,0 +1,225 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(camcorder)
+library(janitor)
+library(waffle)
+library(ggtext)
+library(scales)
+library(ggpubr)
+
+theme_set(theme_minimal())
+
+
+```
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 6,      # width of saved image
+  height = 6,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+```{r}
+gg_playback(
+  name = 'Egg_Production.gif',
+  first_image_duration = 5,
+  last_image_duration = 15,
+  frame_duration = .4,
+  image_resize = 800
+)
+```
+
+
+
+```{r}
+eggproduction  <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-11/egg-production.csv')
+cagefreepercentages <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-11/cage-free-percentages.csv')
+```
+
+
+
+
+```{r}
+eggs <- eggproduction |>
+  mutate(yrmon = floor_date(observed_month , 'month') , 
+         year = year(observed_month) ,
+         month = make_date(2023 , month(observed_month) , 1)) 
+  
+```
+
+
+
+```{r}
+eggs_prep <- eggs |>
+  select(yrmon, year , month , prod_type , prod_process , n_eggs) |>
+  filter(prod_type == 'table eggs') |>
+  pivot_wider(names_from = prod_process , values_from = n_eggs) |>
+  clean_names() |>
+  mutate(cage_free_tot = cage_free_non_organic + cage_free_organic , 
+         cage = all - cage_free_tot) |>
+  pivot_longer(cols = c(5:9)) |>
+  filter(yrmon >= '2016-08-01')
+```
+
+
+
+```{r}
+eggs |>
+  #filter(prod_process != 'all') |>
+  ggplot(aes(x=month , y=n_eggs , color=as.factor(year))) +
+  geom_line() +
+  facet_wrap(~prod_process + prod_type , ncol = 1 , scales = 'free_y' )
+```
+
+
+
+
+```{r}
+mon_dat <- eggs_prep |>
+  filter(!name %in% c('all' , 'cage_free_tot') , year < 2021) |>
+  group_by(year, month) |>
+  summarise(tot = sum(value , na.rm = FALSE) , .groups = "drop")
+```
+
+
+```{r}
+mon_plt <- eggs_prep |>
+  filter(!name %in% c('all' , 'cage_free_tot') , year < 2021) |>
+  ggplot(aes(x=month , y=value , fill=name)) +
+  geom_bar(stat = 'identity' , show.legend = FALSE) +
+  facet_wrap(~year , ncol=1 , strip.position="left") +
+  geom_text(data=mon_dat , 
+            aes(x=month , y=tot , label=paste(round(tot / 1e9, 1), "B") ,  fill = NULL) , 
+            size=2 , nudge_y = 500000000 , color='black') +
+  scale_fill_manual(values=c("#D6BB9E", "#98A6D4", "#694873")) +
+  scale_x_date(labels = date_format("%b") , date_breaks = '1 month') +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.ticks.x=element_blank(),
+    axis.ticks.y=element_blank(),
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank(),
+    axis.text.x = element_text(color='black'),
+    axis.text.y = element_blank(),
+    plot.caption = element_markdown(),
+    strip.text = element_text(color = "black")
+  )
+
+
+mon_plt
+```
+
+
+
+
+
+
+```{r}
+yr_dat <- eggs_prep |>
+  filter(name %in% c('all' ), year < 2021) |>
+  group_by(year) |>
+  summarise(tot_eggs = sum(value , na.rm = TRUE) , .groups = 'drop') 
+```
+
+```{r}
+yr_dat_per <-  eggs_prep |>
+  filter(!name %in% c('all' , 'cage_free_tot'), year < 2021) |>
+  group_by(year, name) |>
+  summarise(n_eggs = sum(value , na.rm = TRUE) , .groups = 'drop') |>
+  left_join(yr_dat , by='year') |>
+  mutate(per = n_eggs / tot_eggs , 
+         rank = case_when(
+           name == 'cage' ~ 1 , 
+           name == 'cage_free_non_organic' ~ 2 , 
+           name == 'cage_free_organic' ~ 3))
+```
+
+
+
+
+```{r}
+yr_plt <- eggs_prep |>
+  filter(!name %in% c('all' , 'cage_free_tot'), year < 2021) |>
+  group_by(year, name) |>
+  summarise(n_eggs = sum(value , na.rm = TRUE) , .groups = 'drop') |>
+  left_join(yr_dat , by='year') |>
+  mutate(per = n_eggs / tot_eggs , 
+         rank = case_when(
+           name == 'cage' ~ 1 , 
+           name == 'cage_free_non_organic' ~ 2 , 
+           name == 'cage_free_organic' ~ 3)) |>
+  ggplot(aes(x=year , y=rank , color=name , label=percent(per , accuracy=1) )) +
+  geom_point(size = 15, show.legend = FALSE, shape="\u2B2E") +
+  geom_text(color='white'  , size=3.25 ) +
+  facet_wrap(~year , ncol=1 , scales = 'free_y') +
+  scale_color_manual(values=c("#D6BB9E", "#98A6D4", "#694873")) +
+  ylim(0,4) +
+  coord_flip() +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.ticks.x=element_blank(),
+    axis.ticks.y=element_blank(),
+    axis.title.x = element_blank(),
+    axis.text.x = element_text(color='white'),
+    axis.text.y = element_blank(),
+    axis.title.y = element_blank(),
+    strip.background = element_blank(),
+    strip.text.x = element_blank()  )
+
+yr_plt
+```
+
+
+
+
+```{r}
+plt_title <- '<br>Total US Egg Production has remained steady over the years, but the percentage of table eggs that come from cage free hens has grown from <span style="color:#464655;">10% to 23%.</span>'
+plt_subtitle <- paste0('<br>',
+                  '<span style="color:#D6BB9E;">[Cage]</span> &nbsp; &nbsp; &nbsp; &nbsp;',
+                  '<span style="color:#98A6D4;">[Cage Free Non-Organic]</span> &nbsp; &nbsp; &nbsp; &nbsp;',
+                  '<span style="color:#694873;">[Cage Free Organic]</span>',
+                  '<br>')
+
+title_plt <- ggplot() +
+  labs(title=plt_title , subtitle = plt_subtitle) +
+  theme(
+    plot.title = element_textbox_simple(size=16 , face='bold' , color='#2D3047' ),
+    plot.subtitle =  element_markdown(size = 14, hjust = 0.5 , face = 'bold' ,)     )
+title_plt
+```
+
+
+
+```{r}
+plt_caption <- '**Data:** US Egg Production via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+
+
+caption_plt <- ggplot() +
+  labs(caption=plt_caption ) +
+  theme(plot.caption =  element_markdown(size=10 , color='black' ) )
+caption_plt
+```
+
+
+
+```{r}
+center_plt <- ggarrange(mon_plt , yr_plt , ncol = 2 , widths = c(7,3))
+plt <- ggarrange(title_plt , center_plt , caption_plt , ncol=1, heights = c(2,7,1) )
+plt
+```
+
+
