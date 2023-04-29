@@ -1,0 +1,162 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(gt)
+library(gtExtras)
+#library(gganimate)
+library(webshot2)
+#library(stringr)
+library(janitor)
+theme_set(theme_minimal())
+```
+
+
+https://upload.wikimedia.org/wikipedia/commons/8/88/Flag_of_Australia_%28converted%29.svg
+
+
+```{r}
+winners <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-25/winners.csv')
+london_marathon <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-04-25/london_marathon.csv')
+
+flag_db <- read.csv("https://query.data.world/s/mms7qnsv5v73l2uec2m7w6pk25s3i3", header=TRUE) |>
+  mutate(image_url = paste0('https://upload.wikimedia.org/wikipedia/commons/8/88/' , Images.File.Name))
+
+country <- read_csv('https://raw.githubusercontent.com/lukes/ISO-3166-Countries-with-Regional-Codes/master/all/all.csv' ) |> clean_names() 
+
+country$name[country$name == "United States of America"] <- "United States"
+country$name[country$name == "United Kingdom of Great Britain and Northern Ireland"] <- "United Kingdom"
+country$alpha_2[country$name == "United Kingdom"] <- "UK"
+country$alpha_3[country$name == "United Kingdom"] <- "UK"
+
+flagurl <- 'https://raw.githubusercontent.com/cristiroma/countries/master/data/flags/PNG-128/'
+
+flag_db <- flag_db |> 
+  left_join(country |> select(name , alpha_3 , alpha_2) , by=c('Country'='name')) |>
+  mutate(url = paste0(flagurl, alpha_2 , '-128.png'))
+
+```
+
+
+
+
+
+```{r}
+winners |>
+  group_by(Athlete , Category ,  Nationality) |>
+  count() |>
+  arrange(desc(n))
+```
+
+
+
+
+```{r}
+winners |>
+  group_by(  Nationality) |>
+  count() |>
+  left_join(flag_db , by=c('Nationality'='Country')) |>
+  arrange(desc(n))
+```
+
+
+
+
+
+
+```{r}
+wins <- winners |>
+  left_join(flag_db , by=c('Nationality'='Country')) |>
+  select(Year , Category , Athlete  , ImageURL , alpha_3 , Time, url, Nationality )
+
+years <- wins |> select(Year) |> unique()
+mens <- wins |> filter(Category == 'Men') |> 
+  rename(men_name = Athlete , men_nat = alpha_3 , men_time = Time , men_url = ImageURL) |>
+  select(-Category)
+
+mens_w <- wins |> filter(Category == 'Wheelchair Men') |>
+  rename(menw_name = Athlete , menw_nat = alpha_3 , menw_time = Time , menw_url = ImageURL) |>
+  select(-Category)
+
+women <- wins |> filter(Category == 'Women') |>
+  rename(women_name = Athlete , women_nat = alpha_3 , women_time = Time , women_url = ImageURL) |>
+  select(-Category)
+
+women_w <- wins |> filter(Category == 'Wheelchair Women') |>
+  rename(womenw_name = Athlete , womenw_nat = alpha_3 , womenw_time = Time , womenw_url = ImageURL) |>
+  select(-Category)
+
+
+dat_tbl <- years |>
+  left_join(mens) |>
+  left_join(mens_w) |>
+  left_join(women) |>
+  left_join(women_w) |>
+  arrange(desc(Year))
+
+export_dat <- dat_tbl |>
+  left_join(london_marathon , by=c('Year'))
+
+```
+
+
+```{r}
+write_csv(wins , file = 'london_combined.csv')
+```
+
+
+
+```{r}
+dat_tbl |>
+  gt() |>
+  gt_theme_538() |>
+  text_transform(
+    #Apply a function to a column
+    locations = cells_body(c(men_url , menw_url , women_url , womenw_url)),
+    fn = function(x) {
+      #Return an image of set dimensions
+      web_image(
+        url = x,
+        height = 12
+      )
+    }
+  ) |>
+  sub_missing(columns =  c(1:17), missing_text = "") |>
+  tab_spanner(label = md("**Men**"),columns = c(2:5)) |>
+  tab_spanner(label = md("**Men Wheelchair**"),columns = c(6:9)) |>
+  tab_spanner(label = md("**Women**"),columns = c(10:13)) |>
+  tab_spanner(label = md("**Women Wheelchair**"),columns = c(14:17)) |>
+  cols_label(men_url = "" , menw_url = '' , women_url = '' , womenw_url = '' ,
+             men_name = "" , menw_name = '' , women_name = '' , womenw_name = '' ,
+             men_nat = "" , menw_nat = '' , women_nat = '' , womenw_nat = '' , 
+             men_time = "" , menw_time = '' , women_time = '' , womenw_time = '' , Year = '') |>
+  tab_options(table.font.size = px(12L)) #|>
+  #data_color(columns = c(5,9)  , apply_to = 'fill' , colors = c('blue','yellow')  )
+  
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+
+
+```{r}
+
+```
+
