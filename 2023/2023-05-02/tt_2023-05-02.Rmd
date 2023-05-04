@@ -1,0 +1,158 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(camcorder)
+library(ggtext)
+library(scales)
+
+theme_set(theme_minimal())
+```
+
+
+
+```{r}
+plots <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-02/plots.csv')
+species <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-02/species.csv')
+surveys <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-02/surveys.csv')
+```
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 6,      # width of saved image
+  height = 6,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+```{r}
+gg_resize_film(
+  height = 6,
+  width = 7,
+  units = "in",
+  dpi = 350
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 'rodents.gif',
+  first_image_duration = 5,
+  last_image_duration = 15,
+  frame_duration = .4,
+  image_resize = 800
+)
+```
+
+
+```{r}
+surveys |>
+  filter(tag > 0) |>
+  group_by(tag) |>
+  summarise(n = n() , mindate = min(censusdate) , maxdate = max(censusdate) ) |>
+  mutate(delta = maxdate - mindate , delta_yr = delta/365) |>
+  arrange(desc(delta))
+```
+
+
+
+```{r}
+survey <- surveys |>
+  left_join(species , by='species') |>
+  group_by(commonname , month , sex ,  pregnant) |>
+  count() |>
+  mutate(pregnant = ifelse(is.na(pregnant) , 'z' , pregnant) , month = as.factor(month))
+```
+
+```{r}
+survey_f <- survey |>
+  filter(sex=='F') |>
+  group_by(commonname) |>
+  summarise(n=sum(n))
+```
+
+
+
+
+```{r}
+plt_title <- 'Female Rodents Tracked in the Portal Project'
+plt_subtitle <- '<br><span style="color:#0D2149;">Pregnant</span><span style="color:#83C5BE;">Not Pregnant</span><br>'
+plt_caption <- '**Data:** Portal Project via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+
+survey |>
+  filter(sex=='F') |>
+  ggplot(aes(x=month , y=n , fill=pregnant)) +
+  geom_bar( position="fill" , stat = 'identity' , show.legend = FALSE) +
+  facet_wrap(~commonname , ncol = 3 ) +
+  scale_fill_manual(values=c("#0D2149", "#83C5BE")) +
+  labs(title = plt_title , caption = plt_caption , subtitle=plt_subtitle , x='' , y = '') +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_markdown(size=14 , face='bold' , color='#0D2149'),
+    plot.subtitle =  element_markdown(size=8 , face='bold'),
+    plot.caption = element_markdown()
+  )
+```
+
+
+```{r}
+plt_title <- paste0('Female Rodents Observed by Month ' , 
+                    '<span style="color:#0D2149; font-size: 15px;">(Pregnant vs. </span>',
+                    '<span style="color:#83C5BE; font-size: 15px;">Not Pregnant)</span>')
+plt_caption <- '**Data:** Portal Project via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+
+survey |>
+  filter(sex=='F') |>
+  ggplot(aes(x=month , y=n , fill=pregnant)) +
+  geom_bar(stat = 'identity' , position='fill' , show.legend = FALSE) +
+  coord_polar() +
+  geom_point(data=survey_f , aes(x=0,y=0 ) , inherit.aes = FALSE , size = 10 , color='white') +
+  geom_text(data=survey_f , aes(x=0,y=0 , label=comma(n)) , inherit.aes = FALSE , size=2.5) +
+  facet_wrap(~commonname , ncol = 6 ) +
+  scale_fill_manual(values=c("#0D2149", "#83C5BE")) +
+  labs(title = plt_title , caption = plt_caption ,  x='' , y = '') +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size=6),
+    axis.text.y = element_blank(),
+    strip.text = element_text(size = 6),
+    plot.title = element_markdown(size=16 , face='bold' , color='#0D2149'),
+    plot.subtitle =  element_markdown(size=8 , face='bold'),
+    plot.caption = element_markdown()
+  )
+```
+
+
+
+```{r}
+
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+
+```{r}
+
+```
+
