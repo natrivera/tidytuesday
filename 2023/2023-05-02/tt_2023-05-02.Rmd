@@ -119,8 +119,8 @@ survey |>
   ggplot(aes(x=month , y=n , fill=pregnant)) +
   geom_bar(stat = 'identity' , position='fill' , show.legend = FALSE) +
   coord_polar() +
-  geom_point(data=survey_f , aes(x=0,y=0 ) , inherit.aes = FALSE , size = 10 , color='white') +
-  geom_text(data=survey_f , aes(x=0,y=0 , label=comma(n)) , inherit.aes = FALSE , size=2.5) +
+  geom_point(data=survey_f , aes(x=1,y=0 ) , inherit.aes = FALSE , size = 10 , color='white') +
+  geom_text(data=survey_f , aes(x=1,y=0 , label=comma(n)) , inherit.aes = FALSE , size=2.5) +
   facet_wrap(~commonname , ncol = 6 ) +
   scale_fill_manual(values=c("#0D2149", "#83C5BE")) +
   labs(title = plt_title , caption = plt_caption ,  x='' , y = '') +
