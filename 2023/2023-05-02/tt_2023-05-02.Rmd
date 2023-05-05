@@ -48,7 +48,7 @@ gg_resize_film(
 
 ```{r}
 gg_playback(
-  name = 'rodents.gif',
+  name = 'rodents_2.gif',
   first_image_duration = 5,
   last_image_duration = 15,
   frame_duration = .4,
@@ -81,6 +81,41 @@ survey_f <- survey |>
   filter(sex=='F') |>
   group_by(commonname) |>
   summarise(n=sum(n))
+```
+
+
+```{r}
+survey_plt_f <- survey |>
+  filter(sex=='F') |>
+  left_join(survey_f |> rename(tot_n = n), by='commonname') |>
+  mutate(percent_n = n/tot_n) 
+```
+
+
+```{r}
+survey_plt_f_mon <- survey_plt_f |>
+  group_by(commonname , month) |>
+  summarise(mont_per = sum(percent_n) , .groups = 'drop') 
+
+survey_plt_f_mon_min_max <- survey_plt_f_mon |>
+  group_by(commonname) |>
+  summarise(min_mon = min(mont_per) , max_mon = max(mont_per) )
+
+survey_plt_f_mon <- survey_plt_f_mon |>
+  left_join(survey_plt_f_mon_min_max , by='commonname') |>
+  mutate(mon_wt = (mont_per - min_mon) / (max_mon - min_mon) , 
+         mon_wt2 = (((mon_wt - 0) * (1 - 0.5)) / (1 - 0)) + 0.5 )
+
+
+sur_plt_f <- survey_plt_f |>
+  left_join(survey_plt_f_mon , by=c('commonname','month')) |>
+  mutate(plt_n = percent_n / mont_per * mon_wt2)
+
+```
+
+
+```{r}
+survey_plt_f |> group_by(commonname) |> summarise(per = sum(percent_n))
 ```
 
 
@@ -117,11 +152,11 @@ plt_caption <- '**Data:** Portal Project via #TidyTuesday **Plot:** Nat Rivera @
 survey |>
   filter(sex=='F') |>
   ggplot(aes(x=month , y=n , fill=pregnant)) +
-  geom_bar(stat = 'identity' , position='fill' , show.legend = FALSE) +
+  geom_bar(stat = 'identity', position = 'fill' ,  show.legend = FALSE) +
   coord_polar() +
   geom_point(data=survey_f , aes(x=1,y=0 ) , inherit.aes = FALSE , size = 10 , color='white') +
   geom_text(data=survey_f , aes(x=1,y=0 , label=comma(n)) , inherit.aes = FALSE , size=2.5) +
-  facet_wrap(~commonname , ncol = 6 ) +
+  facet_wrap(~commonname , ncol = 6  ) +
   scale_fill_manual(values=c("#0D2149", "#83C5BE")) +
   labs(title = plt_title , caption = plt_caption ,  x='' , y = '') +
   theme(
@@ -139,7 +174,31 @@ survey |>
 
 
 ```{r}
+plt_title <- paste0('Female Rodents Observed by Month ' , 
+                    '<span style="color:#0D2149; font-size: 15px;">(Pregnant vs. </span>',
+                    '<span style="color:#83C5BE; font-size: 15px;">Not Pregnant)</span>')
+plt_caption <- '**Data:** Portal Project via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
 
+sur_plt_f |>
+  #filter(sex=='F') |>
+  ggplot(aes(x=month , y=plt_n , fill=pregnant)) +
+  geom_bar(stat = 'identity',  show.legend = FALSE) +
+  coord_polar() +
+  geom_point(data=survey_f , aes(x=1,y=0 ) , inherit.aes = FALSE , size = 4 , color='white' , alpha=0.75) +
+  geom_text(data=survey_f , aes(x=1,y=0 , label=comma(n)) , inherit.aes = FALSE , size=1.5) +
+  facet_wrap(~commonname , ncol = 6  ) +
+  scale_fill_manual(values=c("#0D2149", "#83C5BE")) +
+  labs(title = plt_title , caption = plt_caption ,  x='' , y = '') +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_text(size=6),
+    axis.text.y = element_blank(),
+    strip.text = element_text(size = 6),
+    plot.title = element_markdown(size=16 , face='bold' , color='#0D2149'),
+    plot.subtitle =  element_markdown(size=8 , face='bold'),
+    plot.caption = element_markdown()
+  )
 ```
 
 
