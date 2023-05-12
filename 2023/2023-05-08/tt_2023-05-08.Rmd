@@ -1,0 +1,316 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(naniar)
+library(visdat)
+library(corrplot)
+library(reshape)
+library(cluster)
+library(factoextra)
+library(sf)
+library(maps)
+library(camcorder)
+library(ggtext)
+library(ggpubr)
+library(scales)
+theme_set(theme_minimal())
+```
+
+
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 6,      # width of saved image
+  height = 6,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+```{r}
+gg_resize_film(
+  height = 12,
+  width = 8,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 'child-care.gif',
+  first_image_duration = 5,
+  last_image_duration = 15,
+  frame_duration = .4,
+  image_resize = 800
+)
+```
+
+
+
+
+```{r}
+childcare_costs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-09/childcare_costs.csv')
+counties <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-05-09/counties.csv')
+```
+
+
+
+```{r}
+costs_2018 <- childcare_costs |> filter(study_year == 2018)
+
+costs_2018_num <- costs_2018 |> select(-c('study_year' , 'county_fips_code'))
+costs_2018_num_scale <- costs_2018_num |> scale() |> as.data.frame() |>
+  cbind(costs_2018 |> select(county_fips_code))
+
+
+```
+
+
+```{r}
+costs_2018_num |>
+  pivot_longer( cols = everything() , names_to = 'col' , values_to = 'rank') |>
+  ggplot(aes(y=col,x=rank)) +
+  geom_boxplot() +
+  geom_jitter()
+```
+
+
+
+```{r}
+costs_2018_num_scale |> 
+  select(-county_fips_code) |>
+  pivot_longer( cols = everything() , names_to = 'col' , values_to = 'rank') |>
+  ggplot(aes(y=col,x=rank)) +
+  geom_boxplot() +
+  geom_jitter()
+```
+
+
+```{r}
+# look at the missing data
+vis_dat(costs_2018_num_scale )
+```
+
+
+```{r}
+costs_2018_num_scale <- costs_2018_num_scale |> select(1:51,60)
+```
+
+
+
+```{r}
+corrplot(cor(costs_2018_num_scale),        # Correlation matrix
+         method = "number", # Correlation plot method
+         type = "full",    # Correlation plot style (also "upper" and "lower")
+         diag = TRUE,      # If TRUE (default), adds the diagonal
+         tl.col = "black", # Labels color
+         bg = "white",     # Background color
+         title = "",       # Main title
+         col = NULL)       # Color palette
+```
+
+
+
+### Start the clustering
+ 
+
+```{r}
+# chose optimal number of clusters
+fviz_nbclust(costs_2018_num_scale |> select(-county_fips_code), kmeans, method = "wss")
+```
+
+
+
+```{r}
+# number of clusters
+num_clusters = 4
+
+#make this example reproducible
+set.seed(1)
+
+#perform k-means clustering with k = 4 clusters
+km <- kmeans(costs_2018_num_scale |> select(-county_fips_code), centers = num_clusters, nstart = 25)
+
+#plot results of final k-means model
+fviz_cluster(km, data = costs_2018_num_scale)
+
+# add clusters to data
+costs_2018_clust <- cbind(costs_2018_num_scale |> select(county_fips_code), cluster = km$cluster) |> 
+  left_join(counties , by='county_fips_code') |>
+  left_join(costs_2018 , by='county_fips_code')  
+```
+
+
+```{r}
+costs_2018_clust |>
+  select(state_abbreviation , cluster) |>
+  ggplot(aes(x=state_abbreviation , y=cluster)) +
+  geom_boxplot() +
+  geom_jitter(size=0.5)
+  
+```
+
+
+
+
+
+
+```{r}
+costs_2018_clust_viz <- costs_2018_clust |>
+  select(3:5, 2 , unr_16 , flfpr_20to64 , flfpr_20to64_6to17 , 
+         pr_p , mhi_2018  , emp_m , emp_service , 
+         emp_sales , emp_n , emp_p , mcsa , one_race_w , one_race_b , 
+         one_race_a , hispanic, total_pop)
+
+costs_2018clust_summ <- costs_2018_clust_viz |> 
+  filter(!is.na(mcsa)) |>
+  select(4:20) |>
+  group_by(cluster) |>
+  summarise_all(list(mean))
+
+costs_2018clust_summ
+```
+
+```{r}
+care_cost_plt <- costs_2018clust_summ |>
+  select(cluster , mcsa) |>
+  ggplot(aes(x=cluster , y=1 , fill=as.factor(cluster) , label=dollar(mcsa))) +
+  geom_tile(show.legend = FALSE) +
+  geom_text(color='white' , size=10) +
+  scale_fill_manual(values=c('1'='#35A7FF', '2'='#8FE388' , '3'='#38618C' , '4'='#343A1A')) +
+  labs(x='', y='', title='Average Weekly Center-Based Child Care by Cluster') +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    plot.title = element_markdown(face = 'bold' , hjust = 0.5)
+  )
+
+care_cost_plt
+```
+
+unr_16 , flfpr_20to64 , 
+flfpr_20to64_6to17 , pr_p , 
+mhi_2018  , emp_m , emp_service , emp_sales , 
+emp_n , emp_p , mcsa , one_race_w , 
+one_race_b , one_race_a , hispanic, total_pop
+```{r}
+plt_caption <- '**Data:** The National Database of Childcare Prices via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+plt_title <- 'All variables in the dataset were used to build clusters of US counties. A sample of those variables are displayed below to show how the clusters compare to one another.'
+
+box_plt <- costs_2018_clust_viz |>
+  filter(!is.na(mcsa)) |>
+  select(4:20) |>
+  pivot_longer( cols = 2:17 , names_to = 'col' , values_to = 'val') |>
+  mutate(col = case_when(
+    col == 'unr_16' ~ 'Unemployment Rate', col == 'flfpr_20to64' ~ 'Labor Partic. (F)', 
+    col == 'flfpr_20to64_6to17' ~ 'Labor Partic. (F) w/kids', col == 'pr_p' ~ 'Poverty Rate',
+    col == 'mhi_2018' ~ 'Median Income', col == 'emp_m' ~ 'Emp Mngt', 
+    col == 'emp_service' ~ 'Emp Service', col == 'emp_sales' ~ 'Emp Sales',
+    col == 'emp_n' ~ 'Emp Nature', col == 'emp_p' ~ 'Emp Production', 
+    col == 'mcsa' ~ 'Child Care Cost', col == 'one_race_w' ~ '1-Race White',
+    col == 'one_race_b' ~ '1-Race Black', col == 'one_race_a' ~ '1-Race Asian', 
+    col == 'hispanic' ~ 'Hispanic', col == 'total_pop' ~ 'Total Pop',
+    .default = col
+  )) |>
+  ggplot(aes(x=cluster,y=val,color=as.factor(cluster))) +
+  geom_boxplot(show.legend = FALSE) +
+  facet_wrap(~col , scales='free_y') +
+  scale_color_manual(values=c('1'='#35A7FF', '2'='#8FE388' , '3'='#38618C' , '4'='#343A1A')) +
+  labs(x='',y='' , caption = plt_caption , title = plt_title) +
+  theme(
+    axis.text.y = element_blank(),
+    strip.text = element_text(face = 'bold'),
+    plot.title = element_textbox_simple( hjust = 0.5),
+    plot.caption = element_markdown()
+  )
+
+box_plt
+```
+
+
+
+
+```{r}
+costs_2018clust_summ |>
+  pivot_longer(!cluster , names_to = 'var' , values_to = 'mean') |>
+  ggplot(aes(x=cluster , y= mean)) +
+  geom_bar(stat='identity') +
+  #coord_flip() +
+  facet_wrap(~var , scales='free')
+```
+
+
+
+
+
+
+```{r}
+county_fips <- maps::county.fips |> as.tibble() |>
+  extract(polyname, c("region", "subregion"), "^([^,]+),([^,]+)$") 
+
+country_maps <- map_data("county" ) |>
+  left_join(county_fips , by = join_by(region, subregion) )
+
+
+clusts_map_2018 <- country_maps |>
+  left_join(costs_2018_clust , by=c('fips'='county_fips_code')) |>
+  filter(!is.na(cluster))
+
+```
+
+
+
+```{r}
+
+map_plt <- clusts_map_2018 %>% 
+  ggplot(aes(long, lat, group = group)) +
+  geom_polygon(aes(fill=as.factor(cluster)) , show.legend = FALSE) +
+  coord_map() +
+  scale_fill_manual(values=c('1'='#35A7FF', '2'='#8FE388' , '3'='#38618C' , '4'='#343A1A')) +
+  labs(title = '' , x='',y='') +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x = element_blank(),
+    axis.text.y = element_blank(),
+    plot.title = element_blank(),
+    plot.subtitle = element_blank(),
+    plot.caption = element_markdown()
+  )
+
+map_plt
+```
+
+
+
+
+
+
+```{r}
+ggarrange(map_plt , care_cost_plt , box_plt   , ncol = 1 , heights = c(4,1,5))
+```
+
+
+
+
+
+
+
+
+
+
+
+
