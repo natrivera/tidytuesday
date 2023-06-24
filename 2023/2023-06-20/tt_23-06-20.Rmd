@@ -1,0 +1,106 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(lunar)
+library(camcorder)
+
+theme_set(theme_minimal())
+```
+
+
+
+
+```{r}
+ufo_sightings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-20/ufo_sightings.csv')
+places <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-20/places.csv')
+day_parts_map <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-06-20/day_parts_map.csv')
+D
+```
+
+
+
+```{r}
+ufo_sightings |>
+  mutate(year = year(reported_date_time)) |>
+  group_by(year) |>
+  count() |>
+  ggplot(aes(x=n , y=as.factor(year))) +
+  geom_bar(stat='identity')
+```
+
+
+
+
+```{r}
+range <- (seq(as.Date('1900-01-01'), as.Date('2023-12-31'),"days"))
+lunar_ilum <-  lunar.illumination(x = range , shift = 12)
+lunar <- as.data.frame(cbind(range , lunar_ilum))
+lunar$date <- as.Date(lunar$range)
+```
+
+
+
+
+
+```{r}
+ufo_sightings$report_date <- as.Date(ufo_sightings$reported_date_time)
+
+ufo_dates <- ufo_sightings |>
+  group_by(report_date) |>
+  count()
+
+
+lunar_sight <- lunar |>
+  left_join(ufo_dates , by=c('date'='report_date'))
+```
+
+
+
+
+
+```{r}
+lunar_sight$ilum_round <- as.factor(round(lunar_sight$lunar_ilum , 2))
+```
+
+
+
+
+```{r}
+lunar_sight |>
+  group_by(ilum_round) |>
+  summarise(sights = sum(n , na.rm = TRUE) ) |>
+  mutate(ilum_round = as.double(ilum_round)) |>
+  ggplot(aes(x= ilum_round, y=sights)) +
+  geom_line()
+```
+
+
+
+
+```{r}
+plt_tlt <- ''
+plt_caption <- '**Data:** National UFO Reporting Center via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+
+lunar_sight |>
+  filter(date >= '1990-01-01') |>
+  mutate(year = year(date) , 
+         decade = year - year %% 10 ) |>
+  group_by(ilum_round , decade) |>
+  summarise(sights = sum(n , na.rm = TRUE  ) ) |>
+  mutate(ilum_round = as.numeric(ilum_round) ) |>
+  ggplot(aes(x= ilum_round, y=sights)) +
+  geom_area() +
+  facet_wrap(~decade , nrow = 1) +
+  labs(y='UFO Sightings' , x='Lunar Illumination' , title=plt_tlt , caption = plt_caption)
+```
+
+
+
+
+
