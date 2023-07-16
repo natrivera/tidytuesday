@@ -1,0 +1,141 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(camcorder)
+library(ggtext)
+
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 6,      # width of saved image
+  height = 6,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+
+
+```{r}
+gg_resize_film(
+  height = 6,
+  width = 8,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 'child-care.gif',
+  first_image_duration = 5,
+  last_image_duration = 30,
+  frame_duration = .5,
+  image_resize = 800
+)
+```
+
+
+
+
+
+```{r}
+global_temps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-11/global_temps.csv')
+nh_temps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-11/nh_temps.csv')
+sh_temps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-11/sh_temps.csv')
+zonann_temps <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-11/zonann_temps.csv')
+
+
+```
+
+
+lats <- unique(z_temps$name) |> 
+  as.data.frame() |> 
+  rename(range = 1) |>
+  mutate(name = range) |>
+  separate_wider_delim(range , delim = '-' , names=c('lower','upper')) |>
+  mutate(lower_lat = ifelse( substr(lower ,3,3) == 'U' ,0, as.integer( substr(lower ,1,2))), 
+         lower_lat = ifelse( substr(lower ,3,3) == 'S' , lower_lat*-1, lower_lat  ) ,
+         upper_lat = ifelse( substr(upper ,3,3) == 'U' ,0, as.integer( substr(upper ,1,2))) , 
+         upper_lat = ifelse( substr(upper ,3,3) == 'S' , upper_lat*-1, upper_lat  ) ) |>
+  select(name , lower_lat , upper_lat)
+
+z_temps <- z_temps |>
+  left_join(lats) |>
+  filter(! name %in% c('24N-90N' , '24S-24N' , '90S-24S')) 
+
+
+```{r}
+z_temps <- zonann_temps |>
+  pivot_longer(cols = 5:15) |>
+  mutate(decade = Year - Year %% 10) |>
+  filter(! name %in% c('24N-90N' , '24S-24N' , '90S-24S')) 
+
+z_decade <- z_temps |>
+  group_by(decade , name ) |>
+  summarise(temp = mean(value))
+
+lat_ord <- c('90S-64S' , '64S-44S' , '44S-24S' , '90S-24S' , 
+            "24S-EQU" , "EQU-24N" , "24S-24N" , "24N-44N" , 
+            "44N-64N" , "64N-90N" , "24N-90N")
+
+
+
+z_decade$name <- factor(z_decade$name, ordered = TRUE, levels = lat_ord )
+```
+
+
+
+
+
+
+
+```{r}
+plt_title <- 'Latitude Zonal Mean Surface Temperature by Decade'
+plt_subtitle <- '<br>The GISS Surface Temperature Analysis version 4 (GISTEMP v4) is an estimate of global surface temperature change.<br>'
+plt_caption <- '**Data:** NASA GISS Surface Temperature Analysis (GISTEMP v4) via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+
+z_decade |>
+  ggplot(aes(x=as.factor(decade) , y=name , fill=temp , label=round(temp , 1))) +
+  geom_tile(color = "black", lwd = 0.25, linetype = 1) +
+  geom_text(size = 3) +
+  scale_fill_gradient2(low = "#18206F", mid = "#F5E2C8",high = "#BD1816" , limits = c(-1.5, 2.5)) +
+  labs(x='' , y='' , title=plt_title , caption = plt_caption , subtitle = plt_subtitle) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_textbox_simple(face = 'bold' , hjust = 0.5 , size = 18) ,
+    plot.subtitle = element_textbox_simple() ,
+    plot.caption = element_markdown() 
+  )
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,142 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(tidytext)
+library(wordcloud)
+
+
+theme_set(theme_minimal())
+```
+
+
+
+
+```{r}
+historical_markers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-04/historical_markers.csv')
+no_markers <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-04/no_markers.csv')
+
+us_states <- read_csv('us_states_region.csv') |> clean_names()
+
+historical_markers <- historical_markers |> left_join(us_states , by=c('state_or_prov'='state'))
+```
+
+
+
+```{r}
+marker_words <- historical_markers |>
+  unnest_tokens(word, title) |>
+  count(division, word, sort = TRUE) |>
+  anti_join(stop_words , by='word')
+```
+
+
+
+
+```{r}
+marker_words_idf <- marker_words |>
+  bind_tf_idf(word, division, n)
+```
+
+
+
+
+```{r}
+marker_words_idf |>
+  filter(division == 'West South Central') |>
+  select(word, n) |>
+  with(wordcloud(word, n, max.words = 100))
+```
+
+
+
+```{r}
+# show the tf-idf
+marker_words_idf |>
+  filter(n > 1) |>
+  group_by(division) |>
+  slice_max(tf_idf, n = 5) |>
+  ungroup() |>
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = division)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~division, ncol = 5, scales = "free") +
+  labs(x = "tf-idf", y = NULL) +
+  theme(text = element_text(size = 9) , 
+        axis.text.x = element_blank())
+```
+
+
+
+
+```{r}
+# show the raw volumes
+marker_words_idf |>
+  group_by(division) |>
+  slice_max(n, n = 5) |>
+  ungroup() |>
+  ggplot(aes(n, fct_reorder(word, n), fill = division)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~division, ncol = 8, scales = "free") +
+  labs(x = "tf-idf", y = NULL) +
+  theme(text = element_text(size = 9) , 
+        axis.text.x = element_blank())
+```
+
+
+
+
+```{r}
+marker_words_st <- historical_markers |>
+  unnest_tokens(word, title) |>
+  count(state_or_prov, word, sort = TRUE) |>
+  anti_join(stop_words , by='word')
+```
+
+
+
+```{r}
+marker_words_idf_st <- marker_words_st |>
+  bind_tf_idf(word, state_or_prov, n)
+```
+
+
+```{r}
+marker_words_idf_st |>
+  filter(n > 1) |>
+  group_by(state_or_prov) |>
+  slice_max(tf_idf, n = 5) |>
+  ungroup() |>
+  ggplot(aes(tf_idf, fct_reorder(word, tf_idf), fill = state_or_prov)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~state_or_prov, ncol = 8, scales = "free") +
+  labs(x = "tf-idf", y = NULL) +
+  theme(text = element_text(size = 9) , 
+        axis.text.x = element_blank())
+```
+
+
+
+```{r}
+marker_words_idf_st |>
+  filter(state_or_prov == 'California') |>
+  select(word, n) |>
+  with(wordcloud(word, n, max.words = 100))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
