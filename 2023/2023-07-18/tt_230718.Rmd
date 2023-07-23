@@ -1,0 +1,140 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(camcorder)
+library(ggtext)
+library(ggpattern)
+library(scales)
+library(ggpubr)
+
+theme_set(theme_minimal())
+```
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 6,      # width of saved image
+  height = 7,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+
+
+```{r}
+gg_resize_film(
+  height = 4,
+  width = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 'gpt_detector.gif',
+  first_image_duration = 15,
+  last_image_duration = 30,
+  frame_duration = .5,
+  image_resize = 800
+)
+```
+
+
+```{r}
+detectors <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-07-18/detectors.csv')
+
+```
+
+
+
+```{r}
+dect <- detectors |>
+  mutate(ai_human = ifelse(model == 'Human' , model,'AI') , 
+         ai_human = ifelse(ai_human == 'AI' , 'AI Written' , 
+                           ifelse(native == 'Yes' , 'Human Written (Native Speaker)' , 
+                                  'Human Written (Non-Native Speaker)'))) |>
+  group_by(ai_human  , .pred_class) |> 
+  count() |>
+  pivot_wider(names_from  = .pred_class , values_from = n) |>
+  mutate(total = AI+Human ,
+         ai_per = AI/total ,
+         human_per = Human/total , 
+         ai_per_plt = ai_per*-1) |>
+  pivot_longer(cols = !ai_human , names_to = "name" , values_to = "val")
+
+dect
+
+dect_plt <- dect |> 
+  filter(name %in% c('ai_per_plt' , 'human_per')) |>
+  mutate(correct = tolower(substr(ai_human,1,1)) == tolower(substr(name,1,1)) , 
+         lab = percent(abs(val)))
+```
+
+
+
+```{r}
+plt_title <- "<br>GPT Detectors"
+plt_subtitle <- paste0('<br>',
+                       'Accuracy of the classification is great when the writer is human and a native English writer. Otherwise, the decectors are pretty bad.' ,
+                       ' Striped bars show the percentage of classications that were correct.' ,
+                       '<br>')
+plt_caption <- '<br>**Data:** detectors R package via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera<br>'
+
+
+title_plt <- ggplot() + 
+  theme_void() + 
+  labs(title=plt_title , subtitle = plt_subtitle) +
+  theme(
+    plot.title = element_textbox_simple(face = 'bold' , hjust = 0.5 , size = 20 , color='#35605A') ,
+    plot.subtitle = element_textbox_simple(size=8) 
+  )
+
+caption_plt <-  ggplot() + 
+  theme_void() + 
+  labs(caption= plt_caption ) +
+  theme(plot.caption = element_markdown() )
+
+body_plt <- dect_plt |>
+  ggplot(aes(x=val , y=ai_human , fill=name , pattern = correct , label = lab)) +
+  geom_bar_pattern(stat='identity' , show.legend = FALSE , pattern_size = 0.0005, pattern_density = 0.1,
+                    pattern_fill = "white" , pattern_color = 'white') +
+  geom_vline(xintercept = 0,  color = "white", size=1.5) +
+  geom_label(color='white' , show.legend = FALSE ,  nudge_x = -0.025 , size=2) +
+  geom_text(aes(x= 0, y=4.2 , label='GPT Detector Classification' ) , color='black' , fontface = "bold") +
+  geom_text(aes(x= -0.5, y=3.75 , label='AI Written' ) , color='#058ED9' , fontface = "bold") +
+  geom_text(aes(x= 0.5, y=3.75 , label='Human Written') , color='#0D2149' , fontface = "bold") +
+  labs(x='' ,y='') +
+  scale_fill_manual(values = c('#058ED9','#0D2149')) +
+  scale_x_continuous(position = "top" ) +
+  scale_pattern_manual(values = c("none", "stripe")) +
+  expand_limits(y=4.3) +
+  theme(
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text.x=element_blank(),
+    plot.title = element_blank() ,
+    plot.subtitle = element_blank()
+  )
+
+
+ggarrange(title_plt , body_plt , caption_plt , ncol = 1 , heights = c(2,6 ,2))
+
+```
+
+
+
+```{r}
+
+```
+
