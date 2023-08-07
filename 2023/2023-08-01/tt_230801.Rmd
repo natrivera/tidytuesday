@@ -1,0 +1,168 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(rgdal)
+library(rgeos)
+library(maptools)
+library(camcorder)
+library(ggtext)
+library(showtext)
+
+```
+
+
+```{r}
+# Import the fonts
+font_add_google("Permanent Marker", "Permanent Marker") 
+font_add_google("Sriracha", "Sriracha") 
+showtext_auto()
+```
+
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 8,      # width of saved image
+  height = 6,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+
+
+```{r}
+gg_resize_film(
+  height = 4,
+  width = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 'us_states.gif',
+  first_image_duration = 15,
+  last_image_duration = 30,
+  frame_duration = .5,
+  image_resize = 800
+)
+```
+
+```{r}
+gg_stop_recording()
+```
+
+
+
+```{r}
+states <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-01/states.csv')
+state_name_etymology <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-01/state_name_etymology.csv')
+us_map_hex <-  readOGR("us_states_hexgrid.geojson")
+
+```
+
+
+
+```{r}
+
+tot_us_pop <- sum(states$population_2020)
+
+states <- states |>
+  mutate(pop_dens = population_2020 / land_area_mi2 ,
+         us_pop = tot_us_pop , 
+         mls_per_us_cap = land_area_mi2 / us_pop , 
+         acrs_per_us_cap = mls_per_us_cap * 640 ,
+         acre_per_us_hld = acrs_per_us_cap*2.6 ,
+         id = postal_abbreviation)
+
+acre_sts <- states |>
+  select(id , acre_per_us_hld)
+
+```
+
+
+
+
+
+```{r}
+us_sts <- us_map_hex |>
+  # transform hex data into table
+  fortify(region = "iso3166_2") |>
+  # transform into tibble format
+  as_tibble() |>
+  # select columns
+  select(id, long, lat) |>
+  left_join(acre_sts) |>
+  filter(id != "DC") 
+```
+
+
+```{r}
+# Calculate centres of polygons to plot state labels
+centres <- gCentroid(us_map_hex, byid = TRUE) |>
+  as_tibble()
+
+labels <- us_map_hex@data$iso3166_2
+
+hex_labels <- tibble(id = labels, centres) |>
+  filter(id != "DC") |>
+  left_join(acre_sts)
+
+us_sts_max <- us_sts |>  filter(acre_per_us_hld == max(acre_per_us_hld))
+us_sts_min <- us_sts |>  filter(acre_per_us_hld == min(acre_per_us_hld))
+```
+
+
+
+```{r}
+plt_title <- 'If Everyone in the US Moved to a Single State, \n\nHow Many Acres of Land Would Each Household Get?'
+plt_subtitle <- paste0('Total US Population is 331M as of 2020 and used an average of 2.6 persons per houshold.',
+                       '\n\n' ,
+                       'Assuming that all land in the state is inhabitable and all land is split evenly.' ,
+                       '\n\n' ,
+                       '<span style="color:#1B512D;">State with Most Land</span>\t\t' , 
+                       '<span style="color:#7BC950;">State with the Least Land</span>')
+plt_caption <- '<br>**Data:** Wikipedia via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera<br>'
+
+plt <- ggplot() +
+  geom_polygon(data = us_sts, aes(x = long, y = lat, group = id ), fill = "#1E90FF" , colour = "#183059") +
+  geom_polygon(data = us_sts_max, aes(x = long, y = lat, group = id ), fill = "#1B512D" , colour = "#183059") +
+  geom_polygon(data = us_sts_min, aes(x = long, y = lat, group = id ), fill = "#7BC950" , colour = "#183059") +
+  geom_text(data = hex_labels, aes(x = x, y = y+0.75, label = id) ,  colour = "#F6F4F3", size = 10) +
+  geom_text(data = hex_labels, aes(x = x, y = y-0.75, label = round( acre_per_us_hld, 2)) ,  
+            colour = "#F6F4F3", size = 8) +
+  labs(title = plt_title , subtitle = plt_subtitle, caption = plt_caption) +
+  coord_map() +
+  theme_void() +
+  theme(
+    text=element_text( family="Sriracha") ,
+    plot.title = element_markdown(  size = 50 , color='#183059' , margin=margin(0, 0, 10, 0),) ,
+    plot.subtitle = element_markdown(size=30 , color='#183059') ,
+    plot.caption = element_markdown( size = 30 , hjust = 0.5 , color='#183059') ,
+    plot.margin = margin(10,10,10,10)
+  )
+
+
+plt
+```
+
+
+
+
+```{r}
+
+```
+
