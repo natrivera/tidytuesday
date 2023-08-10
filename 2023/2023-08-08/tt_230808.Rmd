@@ -1,0 +1,137 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(ggtext)
+library(scales)
+library(showtext)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+# Import the fonts
+font_add_google("Passion One", "Passion One") 
+showtext_auto()
+```
+
+
+```{r}
+episodes <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-08/episodes.csv')
+sauces <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-08/sauces.csv')
+seasons <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-08/seasons.csv')
+
+```
+
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 6,      # width of saved image
+  height = 6,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+
+
+```{r}
+gg_resize_film(
+  height = 4,
+  width = 6,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 'hot_ones.gif',
+  first_image_duration = 15,
+  last_image_duration = 30,
+  frame_duration = .5,
+  image_resize = 800
+)
+```
+
+
+```{r}
+sauce_avg <- sauces |>
+  group_by(season) |>
+  summarise(avg_heat = mean(scoville))
+
+
+episodes <- episodes |>
+  mutate(out_label = ifelse(finished == FALSE , guest , '') ,
+         release_year = year(original_release) , 
+         release_mon_day = date(paste0('2023' , '-' , 
+                                       month(original_release) , '-' , 
+                                       day(original_release) ))) |>
+  left_join(sauce_avg , by='season')
+
+
+
+sauce_unique <- unique(sauces$sauce_name)
+
+sauces |> group_by(sauce_name) |> count() |> arrange(desc(n))
+```
+
+
+
+
+```{r}
+episodes |>
+  group_by(release_year, season) |>
+  count()
+```
+
+
+```{r}
+mon_lims <- c(as.Date("2023-01-01") , as.Date("2023-12-28"))
+
+plt_title <- 'Hot Ones'
+plt_subtitle <- paste0('Over the span of the 21 seasons, only 15 guests have not finished the increasingly spicy platter (Highlighted Below).\n\n' , 
+                       'Each marker represnts an episode and the color shows the average spiciness of the sauces in scovilles.\n\n' , 
+                       'Scovilles \t\t\t\t<span style="color:#FF0000;">68k</span>\t\t -->-->-->\t\t' , 
+                       '<span style="color:#8B0000;">333k</span>')
+plt_caption <- '<br>**Data:** Wikipedia via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera<br>'
+episodes |>
+  ggplot(aes(x=release_mon_day , y=0 , label = out_label)) +
+  geom_point(aes(shape=finished , color=avg_heat ), size=4 , show.legend = FALSE)  +
+  geom_text(size = 7.5  , color = '#FFD200' , position = position_jitter(width=1,height=1) ) +
+  facet_wrap(~release_year , ncol = 1 ) +
+  labs(title = plt_title , subtitle = plt_subtitle , caption = plt_caption) +
+  scale_shape_manual(values=c( 13,19)) + 
+  scale_color_gradient(low="#FF0000", high="#8B0000") +
+  scale_x_date(date_labels = "%b" , date_breaks="1 month" , limits = mon_lims)  +
+  theme_void() +
+  theme(
+    text=element_text( family="Passion One") ,
+    plot.title = element_markdown(size = 150 , color = '#FFD200' , hjust = 0.5) ,
+    plot.subtitle  = element_textbox_simple(size = 30 , color = '#FFFFFF' ) ,
+    plot.caption = element_textbox_simple(size = 30 , color = '#FFD200' , margin= margin(-20,0,-20,0)) ,
+    plot.background = element_rect(fill = "#000000"),
+    axis.text.x=element_text(size=30 , color = '#FFFFFF'),
+    strip.text = element_text(colour = '#FFFFFF' , size=30),
+    plot.margin = margin(10,10,0,10)
+  )
+```
+
+
+
+```{r}
+
+```
+
