@@ -1,0 +1,160 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(gt)
+library(gtExtras)
+library(camcorder)
+library(janitor)
+library(ggtext)
+library(showtext)
+library(ggpubr)
+
+theme_set(theme_minimal())
+  ```
+
+
+
+```{r}
+richmondway <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-09-26/richmondway.csv')
+
+```
+
+
+
+```{r}
+richmondway <- richmondway |>
+  clean_names() |>
+  mutate(f_count_other = f_count_total - f_count_rk)
+```
+
+
+
+```{r}
+# Import the fonts
+font_add_google("Permanent Marker", "Permanent Marker") 
+font_add_google("Caveat", "Caveat") 
+showtext_auto()
+```
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 6,      # width of saved image
+  height = 6,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+
+
+```{r}
+gg_resize_film(
+  height = 6,
+  width = 8,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 'f_bombs.gif',
+  first_image_duration = 15,
+  last_image_duration = 30,
+  frame_duration = .5,
+  image_resize = 800
+)
+```
+
+
+
+
+
+
+```{r}
+lm_dat <- richmondway |>
+  select(imdb_rating , season , episode , f_count_rk , f_count_total , dating_flag , coaching_flag) |>
+  mutate(season = as.factor(season))
+
+
+lm <- lm(data=lm_dat , formula =  imdb_rating~.)
+
+summary(lm)
+```
+
+
+```{r}
+
+bar_dat <- richmondway |>
+  mutate(season = paste('Season ' , season)) |>
+  select(episode_order , season , episode , f_count_other , f_count_rk , imdb_rating , f_perc) |>
+  pivot_longer(cols = c('f_count_other','f_count_rk')) 
+
+bar_total <- bar_dat |> 
+  group_by(episode_order , season , episode , imdb_rating) |>
+  summarise(value = sum(value))
+
+rk_f <- bar_dat |>
+  filter(name == 'f_count_rk')
+```
+
+
+
+
+```{r}
+plt_title <- 'BELIEVE'
+plt_subtitle  <- paste('Believe it or not, there are ' ,
+                        '<strong style="color: #E13036;">0</strong>' , 
+                       ' episodes of Ted Lasso where the **F-BOMB** is **not** dropped.' , 
+                       '')
+plt_caption <- '**Data:** richmondway R Package via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+annot1 <- data.frame(episode_order = 5 , episode = 5.25 , value= 45, season = 'Season  1' , name='f_count_rk', 
+                    label_text = 'Each bar is total F-bombs per episode by entire cast.')
+annot2 <- data.frame(episode_order = 5 , episode = 2.5 , value= 40, season = 'Season  1' , name='f_count_rk', 
+                    label_text = 'Light Blue = Roy Kent')
+annot3 <- data.frame(episode_order = 5 , episode = 2.5 , value= 35, season = 'Season  1' , name='f_count_rk', 
+                    label_text = 'Circle = IMDB Score')
+
+ep_bar <- bar_dat |>
+  ggplot(aes(x=episode , y=value , fill=name)) +
+  geom_bar(stat='identity' , show.legend = FALSE) +
+  geom_text(data = bar_total , aes(x=episode , y=value+2, label=value) , inherit.aes = FALSE , size=10 ) +
+  geom_text(data=annot1 , aes(label=label_text) , size=10 , family='Caveat' ) + 
+  geom_text(data=annot2 , aes(label=label_text) , size=10 , family='Caveat' ) + 
+  geom_text(data=annot3 , aes(label=label_text) , size=10 , family='Caveat' ) + 
+  geom_point(data = bar_total, aes(x= episode , y=-3 , color=imdb_rating  ) , 
+             size=5 , inherit.aes = FALSE , show.legend = FALSE) +
+  geom_text(data = bar_total, aes(x= episode , y=-3 , label=imdb_rating  ) , 
+            size=7 , inherit.aes = FALSE , show.legend = FALSE , color='#FFFFFF' ) +
+  facet_wrap(~season , ncol = 3 , scales = 'free_x' , strip.position="bottom") +
+  scale_fill_manual(values=c("#1D2D4B", "#246CD2")) +
+  labs(x='',y='' , title = plt_title , subtitle = plt_subtitle , caption = plt_caption) +
+  theme_void() +
+  theme(plot.margin = margin(30,0,10,0) , 
+        strip.text = element_text(colour = '#1D2D4B' , size=30 ),
+        text=element_text( family="Caveat" ,  color = '#1D2D4B' ) ,
+        plot.background = element_rect(fill = "#FEDE5C" ) ,
+        plot.title = element_markdown(size = 500 , hjust = 0.5 , face = 'bold') ,
+        plot.subtitle = element_markdown(size = 60 , hjust = 0.5) , 
+        plot.caption = element_markdown(size=40))
+
+ep_bar
+
+  
+  
+```
+
+
+
+
+
