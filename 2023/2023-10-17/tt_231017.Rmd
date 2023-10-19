@@ -1,0 +1,164 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+library(camcorder)
+library(janitor)
+library(ggtext)
+library(showtext)
+library(ggimage)
+library(rsvg)
+
+theme_set(theme_minimal())
+```
+
+
+
+
+
+```{r}
+taylor_album_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-17/taylor_album_songs.csv')
+taylor_all_songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-17/taylor_all_songs.csv')
+taylor_albums <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-17/taylor_albums.csv')
+```
+
+
+
+
+```{r}
+# Import the fonts
+#font_add_google("Permanent Marker", "Permanent Marker") 
+font_add_google("Dancing Script", "Dancing Script") 
+showtext_auto()
+```
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 6,      # width of saved image
+  height = 6,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+
+
+```{r}
+gg_resize_film(
+  height = 12,
+  width = 10,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 't_swift.gif',
+  first_image_duration = 15,
+  last_image_duration = 30,
+  frame_duration = .5,
+  image_resize = 800
+)
+```
+
+
+
+
+
+
+
+```{r}
+taylor_album_songs |>
+  group_by(key_mode) |>
+  count() |>
+  arrange(desc(n))
+```
+
+
+```{r}
+key_df <- data.frame(letter = c('C' , 'D' , 'E' , 'F' , 'G' , 'A' , 'B' )  , 
+                        letter_pos = c(1,2,3,4,5,6,0))
+```
+
+
+
+```{r}
+songs_per_key <- taylor_album_songs |>
+  mutate(letter = substring(key_name, 1, 1)) |>
+  group_by(key_name , key_mode , key , letter) |>
+  count() |>
+  left_join(key_df) |>
+  arrange(desc(n))
+
+songs_per_key
+```
+
+
+
+```{r}
+song_data <- taylor_album_songs |>
+  filter(!is.na(key)) |>
+  select(track_name , key_name , key_mode, key) |>
+  left_join(songs_per_key) |>
+  arrange(desc(n) , key) |>
+  mutate(id = row_number() , 
+         row = floor(id / 16) ) |>
+  group_by(row) |>
+  mutate(id2 = row_number(row)) 
+
+song_data
+```
+
+
+```{r}
+min_key <- song_data |>
+  group_by(key_mode) |>
+  filter(id == min(id)) |>
+  mutate(label = paste0(key_mode , ' (', n , ')'))
+min_key
+```
+
+
+
+
+
+```{r}
+img_url = 'bass-clef.png'
+plt_title <- 'Taylor Swift Song Keys'
+plt_subtitle <- 'Each note is a song from her discography grouped by key. C-Major and G-Major are tied for the most used.\n\nBASS TROMBONE'
+plt_caption <-  '**Data:** Taylor R Package via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+song_data |>
+  ggplot(aes(x=id2 , y=letter_pos+1)) +
+  geom_point(size=3 , shape = 21 , fill='#000000' , color="#000000") +
+  geom_point(data=min_key , aes(x=id2,y=letter_pos+1) , color='#A288E3' , size=3 ) +
+  geom_text(data=min_key , aes(x=id2,y=7.5 , label=label) , size=10 , angle = 15) +
+  geom_image( aes(image=img_url, x=0,y=4), size=0.1 , asp=4) +
+  facet_wrap(~row , ncol = 1 ) +
+  labs(x='',y='' , title = plt_title , caption = plt_caption , subtitle = plt_subtitle) +
+  scale_y_continuous(limits = c(-1, 10) , breaks = seq(-1, 8, by = 2)) +
+  theme(
+    strip.text = element_text(color='#FFFFFF') , 
+    axis.text=element_blank() ,
+    panel.grid.major.y = element_line(color='#000000' , linewidth=0.25) ,
+    panel.grid.minor.y = element_blank() ,
+    panel.grid.minor.x = element_blank() ,
+    panel.grid.major.x = element_blank() ,
+    plot.title = element_markdown(size = 150, hjust=0.5, color='#A288E3', face='bold', family='Dancing Script') , 
+    plot.subtitle = element_markdown(size=45 , hjust = 0) , 
+    plot.caption = element_markdown(size=45)
+  )
+```
+
+
