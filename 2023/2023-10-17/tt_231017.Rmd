@@ -13,6 +13,8 @@ library(ggtext)
 library(showtext)
 library(ggimage)
 library(rsvg)
+library(tayloRswift)
+library(taylor)
 
 theme_set(theme_minimal())
 ```
@@ -109,6 +111,7 @@ songs_per_key
 
 ```{r}
 song_data <- taylor_album_songs |>
+  arrange(album_release) |>
   filter(!is.na(key)) |>
   select(track_name , key_name , key_mode, key) |>
   left_join(songs_per_key) |>
@@ -127,6 +130,7 @@ song_data
 
 ```{r}
 song_datav2 <- taylor_album_songs |>
+  arrange(album_release) |>
   filter(!is.na(key)) |>
   select(track_name , key_name , key_mode, key) |>
   mutate(letter = substring(key_name, 1, 1)) |>
@@ -141,6 +145,25 @@ song_datav2 <- taylor_album_songs |>
 song_datav2
 ```
 
+
+
+```{r}
+song_datav3 <- taylor_album_songs |>
+  arrange(album_release) |>
+  filter(!is.na(key)) |>
+  select(album_name, track_name , key_name , key_mode, key) |>
+  mutate(letter = substring(key_name, 1, 1) , 
+         mode = str_trim(substring(key_mode , 3 , 9))) |>
+  left_join(key_df) |>
+  mutate(id = row_number() , 
+         row = floor(id / 16) ) |>
+  group_by(row) |>
+  mutate(id2 = row_number(row) , 
+         stick_pos = ifelse(letter_pos > 2 , -0.1,0.1) , 
+         tick_pos = ifelse(letter_pos > 2 , -4,4)) 
+
+song_datav3
+```
 
 
 
@@ -229,4 +252,54 @@ plt_gordered <- song_datav2 |>
 
 plt_gordered
 ```
+
+
+```{r}
+min_album <- song_datav3 |>
+  group_by(album_name) |>
+  filter(id == min(id)) 
+
+min_album
+```
+
+
+
+```{r}
+img_url = 'bass-clef.png'
+plt_title <- 'Taylor Swift Song Keys'
+plt_subtitle <- 'Each note is a song from her discography in order of when they were released.\n\nBASS TROMBONE'
+plt_caption <-  '**Data:** Taylor R Package via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+
+plt_gordered_album <- song_datav3 |>
+  ggplot(aes(x=id2 , y=letter_pos+1 )) +
+  geom_segment(aes(x=id2+stick_pos, y=letter_pos+1, color=album_name ,
+                   xend=id2+stick_pos , yend=letter_pos+1+tick_pos)) +
+  geom_point(aes(color=album_name , shape=mode) , size=3  ) +
+  geom_text( aes(x=id2,y=9 , label=key_mode) , size=10 , angle = 0) +
+  geom_image( aes(image=img_url, x=0,y=4), size=0.1 , asp=4) +
+  geom_segment(aes(x=4.5,y= -1,xend=4.5,yend= 7)) +
+  geom_segment(aes(x=8.5,y= -1,xend=8.5,yend= 7)) +
+  geom_segment(aes(x=12.5,y= -1,xend=12.5,yend= 7)) +
+  geom_text(data=min_album , aes(x=id2,y=0 , label=album_name) , size=10 , angle = 0) +
+  facet_wrap(~row , ncol = 1 ) +
+  labs(x='',y='' , title = plt_title , caption = plt_caption , subtitle = plt_subtitle) +
+  scale_y_continuous(limits = c(-1, 10) , breaks = seq(-1, 8, by = 2)) +
+  scale_color_albums() +
+  theme(
+    strip.text = element_text(color='#FFFFFF') , 
+    axis.text=element_blank() ,
+    legend.position = "none" ,
+    panel.grid.major.y = element_line(color='#000000' , linewidth=0.25) ,
+    panel.grid.minor.y = element_blank() ,
+    panel.grid.minor.x = element_blank() ,
+    panel.grid.major.x = element_blank() ,
+    plot.title = element_markdown(size = 150, hjust=0.5, color='#A288E3', face='bold', family='Dancing Script') , 
+    plot.subtitle = element_markdown(size=45 , hjust = 0) , 
+    plot.caption = element_markdown(size=45)
+  )
+
+plt_gordered_album
+```
+
+
 
