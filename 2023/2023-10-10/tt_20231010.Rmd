@@ -1,0 +1,40 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+library(tidyverse)
+```
+
+
+
+```{r}
+haunted_places <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-10/haunted_places.csv')
+```
+
+
+
+```{r}
+write.csv(haunted_places, 'haunted_places.csv')
+```
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
