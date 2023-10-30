@@ -1,0 +1,255 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(camcorder)
+library(corrplot)
+library(ggpubr)
+library(ggtext)
+library(scales)
+
+theme_set(theme_minimal())
+
+```
+
+
+
+```{r}
+# Import the fonts
+#font_add_google("Permanent Marker", "Permanent Marker") 
+font_add_google("Dancing Script", "Dancing Script") 
+showtext_auto()
+```
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 8,      # width of saved image
+  height = 8,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+
+
+```{r}
+gg_resize_film(
+  height = 8,
+  width = 12,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 'patient_risk.gif',
+  first_image_duration = 15,
+  last_image_duration = 30,
+  frame_duration = .5,
+  image_resize = 800
+)
+```
+
+
+
+
+```{r}
+patient_risk_profiles <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-24/patient_risk_profiles.csv')
+
+```
+
+
+
+```{r}
+patient <- patient_risk_profiles |> 
+  clean_names() |>
+  rename('age_group_05_09' = age_group_5_9  , 'age_group_00_04' = age_group_0_4) |>
+  pivot_longer(cols = 2:20 , names_to = 'age_group') |>
+  filter(value == 1) |>
+  select(-value) |>
+  pivot_longer(cols = 2:3 , names_to = 'sex') |>
+  filter(value == 1) |>
+  select(-value) |>
+  rename_all( ~str_replace(.,'_in_prior_year','')) |>
+  rename_all( ~str_replace(.,'predicted_risk_of_','pr_')) |>
+  select(1,80:81,2:79) |>
+  mutate(age_group = str_replace(age_group , 'age_group_' , '') , 
+         sex = str_replace(sex , 'sex_' , ''))
+```
+
+
+```{r}
+patient |>
+  group_by(age_group) |>
+  count()
+```
+
+
+
+```{r}
+
+sex_summ <-  patient |>
+  group_by(sex) |>
+  count() |>
+  as.data.frame() |>
+  mutate(age_group = 'Total') |>
+  select(age_group , sex , n)
+
+sex_summ
+```
+
+
+
+
+```{r}
+patient_avg <- patient |>
+  select(-person_id , -sex) |>
+  group_by(age_group ) |>
+  summarise(across(everything(), mean) , n=n()) 
+```
+
+
+```{r}
+patient_avg |>
+  select(-n) |>
+  pivot_longer(!age_group , names_to = 'name' , values_to = 'val' ) |>
+  ggplot(aes(x=age_group , y=name , fill=val)) +
+  geom_raster(show.legend = FALSE) +
+  labs(x='',y='') +
+   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+
+```{r}
+patient_avg |>
+  ggplot(aes(x=hypothyroidism , y=pr_multiple_sclerosis)) +
+  geom_point()
+```
+
+
+```{r}
+
+patient_corr <- cor(patient_avg |> select(-age_group))
+```
+
+
+
+```{r}
+plt_title <- "Patient Risk Profiles"
+plt_subtitle <- "Distribution of patient profiles by age and sex."
+
+age_plt <- patient |>
+  group_by(age_group,sex) |>
+  count() |>
+  union_all(sex_summ) |>
+  ggplot(aes(x=age_group,y=1,fill=sex,label=n )) +
+  geom_raster(show.legend = FALSE ) +
+  geom_text(color='#ffffff') +
+  facet_wrap(~sex , ncol = 2) +
+  labs(x='',y='' , title = plt_title , subtitle = plt_subtitle) +
+  scale_fill_manual(values = c( '#0E0E52' , '#449DD1' )) +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1) ,
+    panel.grid = element_blank() , 
+    axis.text.y=element_blank(),
+    axis.ticks.y=element_blank() ,
+    plot.title = element_markdown(hjust = 0.5 , size=40) , 
+    plot.subtitle = element_markdown( margin = unit(c(0,0,0,0), "cm") , face='bold') 
+    #plot.margin = unit(c(1,4,0,4), "cm")
+    )
+
+age_plt
+```
+
+
+
+
+```{r}
+patient |>
+  select(2:3 , 68:81) |>
+  group_by(age_group,sex) |>
+  summarise(across(everything(), mean)  ) |>
+  pivot_longer(cols = 3:16 ) |>
+  ggplot(aes(x=age_group,y=sex,fill=value,label=round(value,2))) +
+  geom_raster(show.legend = FALSE) +
+  geom_text(size=2) +
+  facet_wrap(~name , ncol = 2 ) +
+  labs(x='',y='') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+
+```{r}
+patient_long <- patient |>
+  select(2:3 , 68:81) |>
+  group_by(age_group,sex) |>
+  summarise(across(everything(), mean)  ) |>
+  pivot_longer(cols = 3:16 ) |>
+  mutate(name = str_replace(name , 'pr_' , '') , 
+         name = str_replace(name ,
+                            'parkinsons_disease_inpatient_or_with_2nd_diagnosis' ,
+                            'parkinsons_disease'), 
+         name = str_replace(name, 
+                            'acute_pancreatitis_with_no_chronic_or_hereditary_or_common_causes_of_pancreatitis',
+                            'acute_pancreatitis') , 
+         name = str_replace(name,
+                            'sudden_hearing_loss_no_congenital_anomaly_or_middle_or_inner_ear_conditions',
+                            'sudden_hearing_loss') , 
+         name = str_replace(name , 'sudden_vision_loss_with_no_eye_pathology_causes','sudden_vision_loss') ,
+         name = str_replace(name , '_',' ') , 
+         name = toupper(name)) 
+
+patient_long_max <- patient_long |>
+  group_by(name) |>
+  filter(value == max(value))
+
+```
+
+
+
+
+```{r}
+
+plt_caption <- '**Data:** Jenna Reps via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+plt_subtitle <- 'Predicted 1-year risk of having an illness by age and sex.'
+
+pred_plt <- patient_long |>
+  ggplot(aes(x=age_group , y=value , group=sex , fill=sex)) +
+  geom_area(show.legend = FALSE , alpha = 0.85, position = 'identity') +
+  geom_text(data=patient_long_max ,aes(label=percent(value) ) , size=3 , nudge_x = -0.75) +
+  facet_wrap(~name , ncol = 4 , scales='free_y') +
+  scale_fill_manual(values = c( '#0E0E52' , '#449DD1' )) +
+  labs(x='',y='' , caption = plt_caption , subtitle = plt_subtitle) +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1) , 
+    panel.grid = element_blank() ,
+    axis.text.y=element_blank(),
+    axis.ticks.y=element_blank() ,
+    plot.caption = element_markdown() , 
+    plot.subtitle = element_text(face='bold'))
+
+pred_plt
+```
+
+
+
+
+
+```{r}
+ggarrange(age_plt , pred_plt , ncol = 1 , heights = c(3,8))
+```
+
