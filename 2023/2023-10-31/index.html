@@ -92,10 +92,9 @@ color: #F5F749;
 text-decoration: none;	
 }
 #bot {
-position: fixed;
-bottom: 0;
 width: 100%;
-text-align: center;	
+text-align: right;	
+margin: 10px 5px 0px 0px;
 }
 #screen {
 max-width: 500px;
@@ -126,6 +125,7 @@ margin: auto;
 <div class="container">
 <div id="screen">	
   <div id="tittle">Horror Game</div>
+  <div id="bot">Page by <a target="_blank" href="http://natrivera.com/">Nat Rivera</a></div>
   <div id="welcome">
     <h4>Snopes has a list of horror legends that they have fact checked and determined to be either <strong>true, false, legends, or other.</strong> You will be presented with a headline and brief details then you will be able to guess Snope's determination of the facts.</h4>
     <br><br>
@@ -135,6 +135,7 @@ margin: auto;
       <option value="10">10</option>
       <option value="15">15</option>
       <option value="20">20</option>
+      <option value="1">1</option>
     </select>
     <br>
     <button id="start" onClick="click">Start</button>
@@ -169,7 +170,6 @@ margin: auto;
       <div class="ans" id="ans3" onClick="click">other</div>
     </div>
   </div>
-	<div id="bot">Page by <a target="_blank" href="http://natrivera.com/">Nat Rivera</a></div>
 	</div>
 </div>
 <script>
