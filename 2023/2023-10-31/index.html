@@ -101,9 +101,17 @@ text-align: center;
 max-width: 500px;
 margin: auto;	
 }	
-#answers , .ans{
-  display: block;
-  position: relative;
+#answers {
+  width: 100%;
+}
+.ans {
+  display: inline-flex;
+  margin: 0px 40px 0px 0px;
+  padding: 2px 5px ;
+  background-color: #E2DADB;
+  border-radius: 2px;
+  text-align: center;
+  color: #000000;
 }
 #showtitle, #title {
   font-weight: bold;
@@ -119,7 +127,7 @@ margin: auto;
 <div id="screen">	
   <div id="tittle">Horror Game</div>
   <div id="welcome">
-    <p>Snopes has a list of horror legends that they have fact checked and determined to be either <strong>true, false, legends, or other.</strong> You will be presented with a headline and brief details then you will be able to guess Snope's determination of the facts.</p>
+    <h4>Snopes has a list of horror legends that they have fact checked and determined to be either <strong>true, false, legends, or other.</strong> You will be presented with a headline and brief details then you will be able to guess Snope's determination of the facts.</h4>
     <br><br>
     <h4>Number of legends to review.</h4>
     <select id="amount">
@@ -153,13 +161,15 @@ margin: auto;
     <div class="piece" id="subtitle"></div>
     <div class="piece" id="claim"></div>
     <div id='answers'>
+      <br><br>
+      <p>Select your guess</p>
       <div class="ans" id="ans1" onClick="click">true</div>
       <div class="ans" id="ans2" onClick="click">false</div>
       <div class="ans" id="ans3" onClick="click">legend</div>
       <div class="ans" id="ans3" onClick="click">other</div>
     </div>
   </div>
-	<div id="bot">Data: Snopes.com via #TidyTuesday <br> Page by <a target="_blank" href="http://natrivera.com/">Nat Rivera</a></div>
+	<div id="bot">Page by <a target="_blank" href="http://natrivera.com/">Nat Rivera</a></div>
 	</div>
 </div>
 <script>
