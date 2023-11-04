@@ -1,48 +1,39 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Trivia Game | by Nat Rivera</title>
-    <meta name="description" content="Play a fun trivia game.">
+<title>Horror Game #TidyTuesday| by Nat Rivera</title>
+    <meta name="description" content="Guess Snope's determination of horror legends.">
     <meta name="keywords" content="Nat Rivera">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
-    <link rel="stylesheet" type="text/css" href="/stylesheet.css">
     <link rel="stylesheet" href="https://cdn.rawgit.com/konpa/devicon/master/devicon.min.css">
-	
     <meta name="og:image" content="http://natrivera.com/pics/trivia.PNG"/>
     <meta property="og:image" content="http://natrivera.com/pics/trivia.PNG"/>
-	<meta property="og:url" content="http://natrivera.com/trivia-game/" >
-	<meta property="og:title" content="Trivia Game | by Nat Rivera">
-	<meta property="og:description" content="Play a fun trivia game.">
+	  <meta property="og:url" content="http://natrivera.com/trivia-game/" >
+	  <meta property="og:title" content="Horror Game #TidyTuesday| by Nat Rivera">
+	  <meta property="og:description" content="Guess Snope's determination of horror legends.">
     <meta name="google-site-verification" content="mVsi7ibE7rpMT5Z-T8BhRG5GZ1MP8Sx4ZXV6js2W8qk" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@itsnatrivera" />
-    <meta name="twitter:title" content="Trivia Game | by Nat Rivera" />
-    <meta name="twitter:description" content="Play a fun trivia game." />
-    <meta name="twitter:image" content="http://natrivera.com/pics/trivia.PNG" /> 	
-	
-	
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-<script src="/profile.js"></script>
 <style>	
-@import url('https://fonts.googleapis.com/css?family=Baloo+Bhaijaan');
+@import url('https://fonts.googleapis.com/css?family=Creepster');
 
 body {
   background: transparent;	
-  background-color: #19198C;
+  background-color: #000000;
   color: #FFF;
 }
 #tittle {
-  font-family: 'Baloo Bhaijaan', cursive;
+  font-family: 'Creepster';
+  color: #ED1C24;
   font-size: 4em;
   text-align: center;
   margin: .5% 0% 2% 0%;	
 }
 select {
-  background-color: #6666FF;
+  background-color: #000000;
   border: none;
   border-radius: 5px;
   color: #FFF;
@@ -53,7 +44,7 @@ select {
 button {
   border-radius: 5px;
   color: #000;
-  background-color: yellow;
+  background-color: #F5F749;
   font-size: 1.2em;
   margin: 5% 0%;
 }
@@ -67,7 +58,7 @@ button {
   display: none;
 }
 em {
-  color: yellow;
+  color: #F5F749;
 }
 #final {
   margin-top: 5%;
@@ -79,23 +70,17 @@ em {
 #board {
   display: none;
   margin: 0 auto;
-  border: 10px solid #6666ff;
   border-radius: 5px;
   padding: 1%;
 }
 .piece {
   min-width: 100%;
-  min-height: 75px;
-  background-color: blue;
-  border-radius: 25px;
-  text-align: center;
-  padding: 2%;
   color: #FFF;
   font-size: 1.2em;
   margin: 2% 0%;
 }
 .ans:hover {
-  background-color: yellow;
+  background-color: #F5F749;
   color: #000;
 }
 a {
@@ -103,7 +88,7 @@ color: #FFF;
 text-decoration: none;	
 }	
 a:hover {
-color: yellow;
+color: #F5F749;
 text-decoration: none;	
 }
 #bot {
@@ -116,19 +101,30 @@ text-align: center;
 max-width: 500px;
 margin: auto;	
 }	
+#answers , .ans{
+  display: block;
+  position: relative;
+}
+#showtitle, #title {
+  font-weight: bold;
+  font-family: 'Creepster';
+  color: #F5F749;
+  font-size: 2em;
+}
 </style>
 </head>
 	
 <body>
 <div class="container">
 <div id="screen">	
-  <div id="tittle">Trivia Game</div>
+  <div id="tittle">Horror Game</div>
   <div id="welcome">
-    <h3>Select a category and number of questions.</h3>
-    <div id="categories"></div>
+    <p>Snopes has a list of horror legends that they have fact checked and determined to be either <strong>true, false, legends, or other.</strong> You will be presented with a headline and brief details then you will be able to guess Snope's determination of the facts.</p>
+    <br><br>
+    <h4>Number of legends to review.</h4>
     <select id="amount">
       <option value="5">5</option>
-      <option value="5">10</option>
+      <option value="10">10</option>
       <option value="15">15</option>
       <option value="20">20</option>
     </select>
@@ -136,10 +132,14 @@ margin: auto;
     <button id="start" onClick="click">Start</button>
   </div>
   <div id="result">
-    <h3 id="message"></h3>
-    <p id="asked"></p>
+    <img class="img img-responsive" id="showimgh" >
+    <p id="showtitle"></p>
+    <p id="showsubtitle"></p>
+    <a id="link" target='_blank'>Snopes Link</a>
+    <br><br>
     <p id="correct"></p>
     <p id="chosen"></p>
+    <p id="message"></p>
     <p id="points"></p>
     <button id="next" onClick="click">Next</button>
   </div>
@@ -148,76 +148,85 @@ margin: auto;
     <button id="last" onClick="click">Next</button>
   </div>
   <div id="board">
-    <div class="piece" id="question">Question</div>
-    <div class="piece ans" id="ans1" onClick="click">Answer 1</div>
-    <div class="piece ans" id="ans2" onClick="click">Answer 2</div>
-    <div class="piece ans" id="ans3" onClick="click">Answer 3</div>
-    <div class="piece ans" id="ans4" onClick="click">Answer 4</div>
+    <img class="img img-responsive" id="imgh" >
+    <div class="piece" id="title"></div>
+    <div class="piece" id="subtitle"></div>
+    <div class="piece" id="claim"></div>
+    <div id='answers'>
+      <div class="ans" id="ans1" onClick="click">true</div>
+      <div class="ans" id="ans2" onClick="click">false</div>
+      <div class="ans" id="ans3" onClick="click">legend</div>
+      <div class="ans" id="ans3" onClick="click">other</div>
+    </div>
   </div>
-	<div id="bot">Created by <a target="_blank" href="http://natrivera.com/">Nat Rivera</a></div>
+	<div id="bot">Data: Snopes.com via #TidyTuesday <br> Page by <a target="_blank" href="http://natrivera.com/">Nat Rivera</a></div>
 	</div>
 </div>
 <script>
+
+var pages = [];
 var horror_dat;
-var questions = [];
+var dat_length = 0;
 var position = 0,
   correct = 0,
   asked = 0;
-var trivial, correctanswer, question, anwer, category;
-var number = 0;
-var cat = 9;
-var trivia = "https://opentdb.com/api.php?amount=" + number + "&category=" + cat;
+var trivial, correctanswer, question, anwer, category , rating , title , subtitle , sopes_url, snopes_img;
+var num_of_pages = 0;
+
 
 $(document).ready(function() {
   
-  //when the dom loads get the categories and generate the html
-  $.getJSON("https://opentdb.com/api_category.php", function(data) {
-    var arr = [];
-    $("#categories").html("<select id='cats'>");
-    for (var i = 0; i < data.trivia_categories.length; i++) {
-      arr[i] = [];
-      arr[i][0] = data.trivia_categories[i].id;
-      arr[i][1] = data.trivia_categories[i].name;
-      $("#cats").append(
-        "<option value='" + arr[i][0] + "'>" + arr[i][1] + "</option>"
-      );
-    }
-    $("#categories").append("</select>");
-  }); // end of get JSON
+  // when dom is ready read the data
+  $.ajax({
+        type: "GET",
+        url: "https://raw.githubusercontent.com/natrivera/tidytuesday/main/2023/2023-10-31/horror_articles.csv",
+        dataType: "text",
+        success: function(data) {processData(data);}
+     });
   
-  $.getJSON('horror.json' , function(dat) {
-    horror_dat = dat;
-  });
 }); // end of document ready
+
+
 
 $(".ans").click(function() {
   var you = "Sorry, Wrong Answer!";
   var check = $(this).html();
+  $('#tittle').css('color','#fff');
 
   if (check == correctanswer) {
     you = "Great, You got it right!";
     correct++;
+    $('body').css('background-color','#00916E');
+  } else {
+    $('body').css('background-color','#ED1C24');
   }
-  $("#board").css("display", "none");
-  $("#asked").html("Question: <em>" + question + "<em>");
-  $("#correct").html("Correct: <em>" + answer + "</em>");
+
+  $("#board").css("display", "none"); // remove the previous card
+  $("#showimgh").attr("src",snopes_img);
+  $("#message").html( you);
+  $("#showtitle").html( title );
+  $("#showsubtitle").html( subtitle );
+  $('#link').attr("href",sopes_url);
+  $("#correct").html("Snopes: <em>" + rating + "</em>");
   $("#chosen").html("Your Choice: <em>" + check + "</em>");
-  $("#message").html("<br>" + you);
   $("#points").html("Score: <em>" + correct + "/" + (asked + 1) + "<em>");
   $("#result").css("display", "block");
 }); //end of choice
 
+
+
 $("#next").click(function() {
-  if (position < number - 1) {
+  $('body').css('background-color','#000000');
+  $('#tittle').css('color','#ED1C24');
+  
+  if (position < num_of_pages - 1) {
     asked++;
     position++;
     display(position);
-  } else if (position === number - 1) {
+  } else if (position === num_of_pages - 1) {
     position++;
     $("#finalmessage").html(
-      "Thank you for playing.<br><br>Category: <em>" +
-        category +
-        "</em><br><br>Your final score:     <em>" +
+      "Thank you for playing.<br><br>Your Results: <em>" +
         correct +
         "/" +
         (asked + 1) +
@@ -228,74 +237,105 @@ $("#next").click(function() {
   }
 }); //end of next
 
+
+
+
 $("#last").click(function() {
   $("#final").css("display", "none");
   $("#welcome").css("display", "block");
 }); //end of last
 
+
+
 $("#start").click(function() {
-  number = $("#amount").val();
-  cat = $("#cats").val();
-  category = $("#cats option:selected").text();
-  console.log(category);
+  num_of_pages = $("#amount").val();
   correct = 0;
   asked = 0;
   position = 0;
   load();
 }); //end of start//
 
-function getting(callback) {
-  //this retrieves the object with all the data
-  trivia = "https://opentdb.com/api.php?amount=" + number + "&category=" + cat;
-  $.getJSON(trivia, function(triv) {
-    callback(triv);
-  }); //end of getJSON
-} //end of getting
+
 
 
 
 
 function load() {
-  getting(function(triv) {
-    trivial = triv;
-    for (var i = 0; i < number; i++) {
-      questions[i] = [];
-      questions[i][0] = trivial.results[i].question;
-      questions[i][1] = trivial.results[i].correct_answer;
-      questions[i][2] = trivial.results[i].incorrect_answers[0];
-      questions[i][3] = trivial.results[i].incorrect_answers[1];
-      questions[i][4] = trivial.results[i].incorrect_answers[2];
+  
+  // gather claims to show
+  for (var i = 0; i < num_of_pages; i++) {
+      iterator = getRandomNumbers(0, dat_length-1, num_of_pages);
+      pages[i] = [];
+      pages[i][0] = horror_dat[iterator[i]][7].split('^^^')[1]; //claim
+      pages[i][1] = horror_dat[iterator[i]][1].split('^^^')[1]; //img_url
+      pages[i][2] = horror_dat[iterator[i]][3].split('^^^')[1]; //rating
+      pages[i][3] = horror_dat[iterator[i]][0].split('^^^')[1]; //title
+      pages[i][4] = horror_dat[iterator[i]][4].split('^^^')[1]; //subtitle
+      pages[i][5] = horror_dat[iterator[i]][8].split('^^^')[1]; //answer
+      pages[i][6] = horror_dat[iterator[i]][2].split('^^^')[1]; //url snopes
     }
-  });
+    
+  // display the first claim after a second
   var time = setTimeout(function() {
     display(position);
   }, 1000);
-}
-//////
-function display(n) {
+
+} // end of load
+
+
+function display(n) { // this function loads the next claim
   $("#welcome").css("display", "none");
   $("#result").css("display", "none");
   $("#board").css("display", "block");
-  $("#ans1").html("------");
-  $("#ans2").html("------");
-  $("#ans3").html("------");
-  $("#ans4").html("------");
 
-  question = questions[n][0];
-  answer = questions[n][1];
-  var incorrect1 = questions[n][2];
-  var incorrect2 = questions[n][3];
-  var incorrect3 = questions[n][4];
-  correctanswer = answer;
-  var array = [answer, incorrect1, incorrect2, incorrect3];
-  array = array.sort();
 
-  $("#question").html(question);
-  $("#ans1").html(array[0]);
-  $("#ans2").html(array[1]);
-  $("#ans3").html(array[2]);
-  $("#ans4").html(array[3]);
+  $("#title").html(pages[n][3]);
+  $("#subtitle").html(pages[n][4]);
+  $("#claim").html(pages[n][0]);
+  $("#imgh").attr("src",pages[n][1]);
+  correctanswer = pages[n][5];
+  rating = pages[n][2];
+  title = pages[n][3];
+  subtitle = pages[n][4];
+  sopes_url = pages[n][6];
+  snopes_img = pages[n][1];
+
+} // end of display
+
+
+
+
+function processData(allText) {
+    var allTextLines = allText.split(/\r\n|\n/);
+    var headers = allTextLines[0].split(',');
+    var lines = [];
+
+    for (var i=1; i<allTextLines.length; i++) {
+        var data = allTextLines[i].split(',');
+        if (data.length == headers.length) {
+
+            var tarr = [];
+            for (var j=0; j<headers.length; j++) {
+                tarr.push(headers[j]+"^^^"+data[j]);
+            }
+            lines.push(tarr);
+        }
+    }
+    //alert(lines);
+    horror_dat = lines;
+    dat_length = lines.length;
+} // end of process_data
+
+
+function getRandomNumbers(min, max, x) {
+  var arr = [];
+  for (var i = 0; i < x; i++) {
+    arr.push(Math.floor(Math.random() * (max - min + 1)) + min);
+  }
+  return arr;
 }
+
+
 </script>
 </body>
 </html>

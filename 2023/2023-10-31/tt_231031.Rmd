@@ -6,6 +6,7 @@ output: html_notebook
 
 ```{r}
 library(tidyverse)
+library(jsonlite)
 ```
 
 
@@ -16,9 +17,22 @@ horror_articles_v1 <- readr::read_csv('https://raw.githubusercontent.com/rfordat
 ```{r}
 horror_articles <- horror_articles |>
   select(title , img_url) |>
-  left_join(horror_articles_v1)
+  left_join(horror_articles_v1) |>
+  mutate(answer = ifelse(str_detect(rating, 'true' ), 'true' , rating) , 
+         answer = ifelse(str_detect(rating, 'false' ), 'false' , rating))
 ```
 
+
+```{r}
+write_csv(horror_articles , 'horror_articles.csv')
+```
+
+
+
+```{r}
+horror <- toJSON(horror_articles)
+write_json(horror , 'horror.json')
+```
 
 
 ```{r}
