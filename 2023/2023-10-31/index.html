@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Trivia Game | by Nat Rivera</title>
+    <meta name="description" content="Play a fun trivia game.">
+    <meta name="keywords" content="Nat Rivera">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="/stylesheet.css">
+    <link rel="stylesheet" href="https://cdn.rawgit.com/konpa/devicon/master/devicon.min.css">
+	
+    <meta name="og:image" content="http://natrivera.com/pics/trivia.PNG"/>
+    <meta property="og:image" content="http://natrivera.com/pics/trivia.PNG"/>
+	<meta property="og:url" content="http://natrivera.com/trivia-game/" >
+	<meta property="og:title" content="Trivia Game | by Nat Rivera">
+	<meta property="og:description" content="Play a fun trivia game.">
+    <meta name="google-site-verification" content="mVsi7ibE7rpMT5Z-T8BhRG5GZ1MP8Sx4ZXV6js2W8qk" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@itsnatrivera" />
+    <meta name="twitter:title" content="Trivia Game | by Nat Rivera" />
+    <meta name="twitter:description" content="Play a fun trivia game." />
+    <meta name="twitter:image" content="http://natrivera.com/pics/trivia.PNG" /> 	
+	
+	
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="/profile.js"></script>
+<style>	
+@import url('https://fonts.googleapis.com/css?family=Baloo+Bhaijaan');
+
+body {
+  background: transparent;	
+  background-color: #19198C;
+  color: #FFF;
+}
+#tittle {
+  font-family: 'Baloo Bhaijaan', cursive;
+  font-size: 4em;
+  text-align: center;
+  margin: .5% 0% 2% 0%;	
+}
+select {
+  background-color: #6666FF;
+  border: none;
+  border-radius: 5px;
+  color: #FFF;
+  margin: 5% 0%;
+  font-size: 1.2em;
+  max-width: 100%;
+}
+button {
+  border-radius: 5px;
+  color: #000;
+  background-color: yellow;
+  font-size: 1.2em;
+  margin: 5% 0%;
+}
+#welcome {
+  display: block;
+  color: #fff;
+  margin-top: 5%;  
+}
+
+#result {
+  display: none;
+}
+em {
+  color: yellow;
+}
+#final {
+  margin-top: 5%;
+  display: none;
+  border-radius: 50px;
+  background-color: rgba(255,255,255,.1);
+  padding: 5%;
+}
+#board {
+  display: none;
+  margin: 0 auto;
+  border: 10px solid #6666ff;
+  border-radius: 5px;
+  padding: 1%;
+}
+.piece {
+  min-width: 100%;
+  min-height: 75px;
+  background-color: blue;
+  border-radius: 25px;
+  text-align: center;
+  padding: 2%;
+  color: #FFF;
+  font-size: 1.2em;
+  margin: 2% 0%;
+}
+.ans:hover {
+  background-color: yellow;
+  color: #000;
+}
+a {
+color: #FFF;
+text-decoration: none;	
+}	
+a:hover {
+color: yellow;
+text-decoration: none;	
+}
+#bot {
+position: fixed;
+bottom: 0;
+width: 100%;
+text-align: center;	
+}
+#screen {
+max-width: 500px;
+margin: auto;	
+}	
+</style>
+</head>
+	
+<body>
+<div class="container">
+<div id="screen">	
+  <div id="tittle">Trivia Game</div>
+  <div id="welcome">
+    <h3>Select a category and number of questions.</h3>
+    <div id="categories"></div>
+    <select id="amount">
+      <option value="5">5</option>
+      <option value="5">10</option>
+      <option value="15">15</option>
+      <option value="20">20</option>
+    </select>
+    <br>
+    <button id="start" onClick="click">Start</button>
+  </div>
+  <div id="result">
+    <h3 id="message"></h3>
+    <p id="asked"></p>
+    <p id="correct"></p>
+    <p id="chosen"></p>
+    <p id="points"></p>
+    <button id="next" onClick="click">Next</button>
+  </div>
+  <div id="final">
+    <h3 id="finalmessage"></h3>
+    <button id="last" onClick="click">Next</button>
+  </div>
+  <div id="board">
+    <div class="piece" id="question">Question</div>
+    <div class="piece ans" id="ans1" onClick="click">Answer 1</div>
+    <div class="piece ans" id="ans2" onClick="click">Answer 2</div>
+    <div class="piece ans" id="ans3" onClick="click">Answer 3</div>
+    <div class="piece ans" id="ans4" onClick="click">Answer 4</div>
+  </div>
+	<div id="bot">Created by <a target="_blank" href="http://natrivera.com/">Nat Rivera</a></div>
+	</div>
+</div>
+<script>
+var horror_dat;
+var questions = [];
+var position = 0,
+  correct = 0,
+  asked = 0;
+var trivial, correctanswer, question, anwer, category;
+var number = 0;
+var cat = 9;
+var trivia = "https://opentdb.com/api.php?amount=" + number + "&category=" + cat;
+
+$(document).ready(function() {
+  
+  //when the dom loads get the categories and generate the html
+  $.getJSON("https://opentdb.com/api_category.php", function(data) {
+    var arr = [];
+    $("#categories").html("<select id='cats'>");
+    for (var i = 0; i < data.trivia_categories.length; i++) {
+      arr[i] = [];
+      arr[i][0] = data.trivia_categories[i].id;
+      arr[i][1] = data.trivia_categories[i].name;
+      $("#cats").append(
+        "<option value='" + arr[i][0] + "'>" + arr[i][1] + "</option>"
+      );
+    }
+    $("#categories").append("</select>");
+  }); // end of get JSON
+  
+  $.getJSON('horror.json' , function(dat) {
+    horror_dat = dat;
+  });
+}); // end of document ready
+
+$(".ans").click(function() {
+  var you = "Sorry, Wrong Answer!";
+  var check = $(this).html();
+
+  if (check == correctanswer) {
+    you = "Great, You got it right!";
+    correct++;
+  }
+  $("#board").css("display", "none");
+  $("#asked").html("Question: <em>" + question + "<em>");
+  $("#correct").html("Correct: <em>" + answer + "</em>");
+  $("#chosen").html("Your Choice: <em>" + check + "</em>");
+  $("#message").html("<br>" + you);
+  $("#points").html("Score: <em>" + correct + "/" + (asked + 1) + "<em>");
+  $("#result").css("display", "block");
+}); //end of choice
+
+$("#next").click(function() {
+  if (position < number - 1) {
+    asked++;
+    position++;
+    display(position);
+  } else if (position === number - 1) {
+    position++;
+    $("#finalmessage").html(
+      "Thank you for playing.<br><br>Category: <em>" +
+        category +
+        "</em><br><br>Your final score:     <em>" +
+        correct +
+        "/" +
+        (asked + 1) +
+        "<em><br>"
+    );
+    $("#result").css("display", "none");
+    $("#final").css("display", "block");
+  }
+}); //end of next
+
+$("#last").click(function() {
+  $("#final").css("display", "none");
+  $("#welcome").css("display", "block");
+}); //end of last
+
+$("#start").click(function() {
+  number = $("#amount").val();
+  cat = $("#cats").val();
+  category = $("#cats option:selected").text();
+  console.log(category);
+  correct = 0;
+  asked = 0;
+  position = 0;
+  load();
+}); //end of start//
+
+function getting(callback) {
+  //this retrieves the object with all the data
+  trivia = "https://opentdb.com/api.php?amount=" + number + "&category=" + cat;
+  $.getJSON(trivia, function(triv) {
+    callback(triv);
+  }); //end of getJSON
+} //end of getting
+
+
+
+
+function load() {
+  getting(function(triv) {
+    trivial = triv;
+    for (var i = 0; i < number; i++) {
+      questions[i] = [];
+      questions[i][0] = trivial.results[i].question;
+      questions[i][1] = trivial.results[i].correct_answer;
+      questions[i][2] = trivial.results[i].incorrect_answers[0];
+      questions[i][3] = trivial.results[i].incorrect_answers[1];
+      questions[i][4] = trivial.results[i].incorrect_answers[2];
+    }
+  });
+  var time = setTimeout(function() {
+    display(position);
+  }, 1000);
+}
+//////
+function display(n) {
+  $("#welcome").css("display", "none");
+  $("#result").css("display", "none");
+  $("#board").css("display", "block");
+  $("#ans1").html("------");
+  $("#ans2").html("------");
+  $("#ans3").html("------");
+  $("#ans4").html("------");
+
+  question = questions[n][0];
+  answer = questions[n][1];
+  var incorrect1 = questions[n][2];
+  var incorrect2 = questions[n][3];
+  var incorrect3 = questions[n][4];
+  correctanswer = answer;
+  var array = [answer, incorrect1, incorrect2, incorrect3];
+  array = array.sort();
+
+  $("#question").html(question);
+  $("#ans1").html(array[0]);
+  $("#ans2").html(array[1]);
+  $("#ans3").html(array[2]);
+  $("#ans4").html(array[3]);
+}
+</script>
+</body>
+</html>

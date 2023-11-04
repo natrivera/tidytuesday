@@ -1,0 +1,42 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+```
+
+
+
+```{r}
+horror_articles_v1 <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-10-31/horror_articles.csv')
+```
+```{r}
+horror_articles <- horror_articles |>
+  select(title , img_url) |>
+  left_join(horror_articles_v1)
+```
+
+
+
+```{r}
+horror_articles |>
+  group_by(rating) |>
+  count() |>
+  arrange(desc(n))
+```
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
