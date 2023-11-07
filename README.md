@@ -81,7 +81,10 @@
 ![Taylor Swift](2023/2023-10-17/t_swift_order_2.jpg)
 
 ## Week - xx [Patient Risk Profiles](https://github.com/natrivera/tidytuesday/tree/main/2023/2023-10-24)
-![Patient Risk Profiles](2023/2023-10-24/patient_risk.jpg)
+![Horror Game](2023/2023-10-24/patient_risk.jpg)
+
+## Week - xx [Horror Legends](https://github.com/natrivera/tidytuesday/tree/main/2023/2023-10-31)
+![Horror Game](2023/2023-10-31/horror_game.gif)
 
 ## Week - xx []()
 ![]()
