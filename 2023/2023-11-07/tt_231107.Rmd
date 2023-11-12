@@ -1,0 +1,166 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+
+```{r}
+library(tidyverse)
+library(camcorder)
+library(scales)
+library(ggtext)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+house <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-11-07/house.csv')
+
+```
+
+
+
+```{r}
+gg_record(
+  dir = 'temp/', # where to save the recording
+  device = "jpeg", # device to use to save images
+  width = 12,      # width of saved image
+  height = 8,     # height of saved image
+  units = "in",   # units for width and height
+  dpi = 300       # dpi to use when saving image
+)
+```
+
+
+
+
+```{r}
+gg_resize_film(
+  height = 8,
+  width = 8,
+  units = "in",
+  dpi = 300
+)
+```
+
+
+
+```{r}
+gg_playback(
+  name = 'patient_risk.gif',
+  first_image_duration = 15,
+  last_image_duration = 30,
+  frame_duration = .5,
+  image_resize = 800
+)
+```
+
+
+
+
+```{r}
+house_dat <- house |>
+  mutate(dist = paste0(state_po , district))
+```
+
+
+```{r}
+house_dat |> filter(dist == 'LA004' , year == '2022')
+```
+
+
+
+```{r}
+house_dist_agg <- house_dat |>
+  mutate(runoff = ifelse(is.na(runoff) , FALSE , runoff)) |>
+  filter(stage == 'GEN' , runoff != TRUE , special != TRUE) |>
+  group_by(year , state, state_po , dist) |>
+  summarise(votes = max(totalvotes) ) |>
+  filter(votes > 1 , votes < 1000000)
+
+house_dist_agg
+```
+
+
+
+```{r}
+house_dist_agg |>
+  group_by(year) |>
+  count()
+```
+
+
+
+
+```{r}
+house_st_avg <- house_dist_agg |>
+  group_by(year , state , state_po) |>
+  summarise(votes = mean(votes)) |>
+  mutate(pred_yr = ifelse(year %% 4 == 0 , 'Presidential' , 'None')) 
+
+house_st_avg
+```
+
+
+```{r}
+house_st_avg_maxmin <- house_st_avg |>
+  group_by(year) |>
+  filter(votes == max(votes) | votes == min(votes))
+
+house_st_avg_maxmin
+```
+
+
+
+```{r}
+house_st_avg |>
+  ggplot(aes(x=year , y=votes , color=state)) +
+  geom_line()
+```
+
+
+
+
+
+```{r}
+plt_title <- 'US HOUSE VOTER PARTICIPATION INCREASES ON PRESIDENTIAL ELECTION YEARS'
+plt_subtitle <- '<br>Each dot represents the average votes per district in a state.<br>'
+plt_caption <- '**Data:** MIT Election Data and Science Lab via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera'
+
+house_st_avg |>
+  ggplot(aes(x=votes , y=year , group=year , fill=pred_yr , color=pred_yr)) +
+  geom_jitter(height = 0.25 ) +
+  geom_boxplot(alpha=0.25 ) +
+  geom_text(data=house_st_avg_maxmin , aes(x=votes,y=year+0.75,label=state_po) , size=2.5) +
+  scale_fill_manual(values=c("#118AB2", "#073B4C")) +
+  scale_color_manual(values=c("#118AB2", "#073B4C")) +
+  scale_y_continuous(limits = c(1975, 2023) , breaks = seq(1976, 2022, by = 2) ) +
+  scale_x_continuous( labels = label_number(scale_cut = cut_short_scale())) +
+  labs(x='' , y='' , title = plt_title , caption = plt_caption , subtitle = plt_subtitle) +
+  theme(
+    #panel.grid.major.y = element_blank() ,
+    legend.position = "none" ,
+    panel.grid.minor.y = element_blank() ,
+    panel.grid.minor.x = element_blank() ,
+    panel.grid.major.x = element_blank() ,
+    plot.background = element_rect(fill='#CAC4CE') , 
+    plot.title = element_textbox_simple(hjust=0.5, color='#18020C', 
+                                        face='bold' , size=30 , margin=margin(20,0,0,0)) , 
+    plot.subtitle = element_markdown(hjust = 0) , 
+    plot.caption = element_markdown()
+  )
+```
+
+
+
+
+
+```{r}
+
+```
+
+
+
