@@ -89,8 +89,10 @@
 ## Week - 45 [US HOUSE](https://github.com/natrivera/tidytuesday/tree/main/2023/2023-11-07)
 ![US HOUSE](2023/2023-11-07/us_house.gif)
 
-## Week - xx []()
-![]()
+# [2024](https://github.com/natrivera/tidytuesday/tree/main/2024)
+
+## Week - 7 [Valentine's Day Spending](https://github.com/natrivera/tidytuesday/tree/main/2024/2024-02-13)
+![Valentine's Day Spending](2024/2024-02-13/val_spending.png)
 
 ## Week - xx []()
 ![]()
