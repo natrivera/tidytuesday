@@ -1,0 +1,166 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(rgdal)
+library(rgeos)
+library(maptools)
+library(camcorder)
+library(ggtext)
+library(showtext)
+
+theme_set(theme_minimal())
+```
+
+```{r}
+# Import the fonts
+font_add_google("Permanent Marker", "Permanent Marker") 
+font_add_google("Sriracha", "Sriracha") 
+showtext_auto()
+```
+
+
+
+```{r}
+polling_places <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-01-16/polling_places.csv')
+
+
+us_map_hex <-  readOGR("us_states_hexgrid.geojson")
+
+```
+
+
+How many election dates are there per year?
+
+```{r}
+polling_places |>
+  mutate(yr = year(election_date)) |>
+  group_by(yr, election_date) |>
+  count()
+```
+
+what's going on with the non November records?
+
+```{r}
+non_nov <- polling_places |>
+  filter(month(election_date) != 11)
+
+non_nov
+```
+
+
+Removing the non-Nov records, how many polling places are there per election year?
+
+```{r}
+polling_places |>
+  mutate(yr = year(election_date)) |>
+  filter(month(election_date) == 11) |>
+  group_by(yr) |>
+  count() |>
+  ggplot(aes(x=yr , y=n)) +
+  geom_bar(stat='identity') +
+  coord_flip()
+  
+```
+
+
+```{r}
+polling_places |>
+  mutate(yr = year(election_date)) |>
+  arrange(precinct_name , yr) |>
+  select(precinct_name , election_date , county_name , state , address , precinct_name)
+```
+
+
+
+```{r}
+polling_yr <- polling_places |>
+  mutate(yr = year(election_date)) |>
+  filter(month(election_date) == 11) |>
+  group_by(state , yr) |>
+  count()
+```
+
+
+```{r}
+us_sts <- us_map_hex |>
+  # transform hex data into table
+  fortify(region = "iso3166_2") |>
+  # transform into tibble format
+  as_tibble() |>
+  # select columns
+  select(id, long, lat) |>
+  #left_join(acre_sts) |>
+  filter(id != "DC") 
+```
+
+
+```{r}
+# Calculate centres of polygons to plot state labels
+centres <- gCentroid(us_map_hex, byid = TRUE) |>
+  as_tibble()
+
+labels <- us_map_hex@data$iso3166_2
+
+hex_labels <- tibble(id = labels, centres) |>
+  filter(id != "DC") #|>
+  #left_join(acre_sts)
+```
+
+
+
+```{r}
+polling_20 <- polling_yr |>
+  filter(yr == 2020) |>
+  left_join(us_sts , by = join_by('state' == 'id'))
+```
+
+
+
+```{r}
+plt_title <- 'If Everyone in the US Moved to a Single State'
+plt_subtitle <- paste0('Total US Population is 331M as of 2020 and used an average of 2.6 persons per houshold.')
+plt_caption <- '<br>**Data:** Wikipedia via #TidyTuesday **Plot:** Nat Rivera @Itsnatrivera<br>'
+
+plt <- ggplot() +
+  geom_polygon(data = polling_20, aes(x = long, y = lat, group = state , fill=n ) ) +
+  #geom_polygon(data = us_sts_max, aes(x = long, y = lat, group = id ), fill = "#1B512D" , colour = "#183059") +
+  #geom_polygon(data = us_sts_min, aes(x = long, y = lat, group = id ), fill = "#7BC950" , colour = "#183059") +
+  geom_text(data = hex_labels, aes(x = x, y = y+0.75, label = id) ,  colour = "#F6F4F3", size = 2) +
+  #geom_text(data = hex_labels, aes(x = x, y = y-0.75, label = round( acre_per_us_hld, 2)) ,  
+  #          colour = "#F6F4F3", size = 8) +
+  labs(title = plt_title , subtitle = plt_subtitle, caption = plt_caption) +
+  coord_map() +
+  theme_void() +
+  theme(
+    text=element_text( family="Sriracha") ,
+    plot.title = element_markdown(  size = 10 , color='#183059' , margin=margin(0, 0, 10, 0),) ,
+    plot.subtitle = element_markdown(size=10 , color='#183059') ,
+    plot.caption = element_markdown( size = 10 , hjust = 0.5 , color='#183059') ,
+    plot.margin = margin(10,10,10,10)
+  )
+
+
+plt
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+

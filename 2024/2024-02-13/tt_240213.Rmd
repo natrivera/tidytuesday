@@ -1,0 +1,93 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(scales)
+library(tayloRswift)
+library(ggtext)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+historical_spending <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-02-13/historical_spending.csv')
+gifts_age <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-02-13/gifts_age.csv')
+gifts_gender <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-02-13/gifts_gender.csv')
+```
+
+
+```{r}
+historical_spending |>
+  clean_names() |>
+  pivot_longer(!year , names_to = 'metric' , values_to = 'val') |>
+  filter(!metric == 'per_person') |>
+  ggplot(aes(x=year , y=val , color=metric)) +
+  geom_line(show.legend = FALSE) +
+  facet_wrap(~metric , scales = 'free_y') 
+```
+
+
+```{r}
+hist_edges <- historical_spending |>
+  clean_names() |>
+  pivot_longer(!year , names_to = 'metric' , values_to = 'val') |>
+  filter(year %in% c(2010,2022)) |>
+  mutate(year = ifelse(year==2010,2009,2023))
+
+hist_edges$val <- ifelse(hist_edges$metric == 'gift_cards' & hist_edges$year == 2023 , 
+                         hist_edges$val + 1 , hist_edges$val )
+
+hist_edges$val <- ifelse(hist_edges$metric == 'gift_cards' & hist_edges$year == 2009 , 
+                         hist_edges$val + 1 , hist_edges$val )
+
+hist_edges
+```
+
+
+```{r }
+plt_title <- "Average Valentine's Day Spending in $ Dollars"
+plt_caption <- 'Data: National Retail Federation (US) via #TidyTuesday  Plot: Nat Rivera'
+
+historical_spending |>
+  clean_names() |>
+  pivot_longer(!year , names_to = 'metric' , values_to = 'val') |>
+  filter(!metric %in% c('per_person' , 'percent_celebrating')) |>
+  ggplot(aes(x=year , y=val , color=metric)) +
+  geom_smooth(linewidth=2 , show.legend = FALSE ,  se = FALSE , method = 'loess' , formula = 'y~x') +
+  geom_text(data = hist_edges |> filter(!metric %in% c('per_person' , 'percent_celebrating')), 
+            aes(x=year , y=val , label=metric) , size=5 , show.legend = FALSE) +
+  labs(x='',y='' , title=plt_title , caption = plt_caption) +
+  scale_x_continuous(limits = c(2008, 2024) , breaks = seq(2010, 2022, by = 2)) +
+  scale_color_taylor(palette = "Red", guide = "none") +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill='#1F1A38' ) ,
+    axis.text.x = element_text(size=14 , color='#EAD7D1' , margin = margin(0,0,10,0)),
+    axis.text.y = element_text(size=14 , color='#EAD7D1' , margin = margin(0,0,0,10)),
+    plot.title = element_text(size=22 , face='bold' , color='#EAD7D1' , hjust = 0.5 , margin = margin(10,0,0,0)),
+    plot.caption = element_text(size=12 ,face='bold' , color='#EAD7D1' , hjust = 0.75) 
+  )
+```
+
+
+```{r}
+gifts_age |>
+  clean_names() |>
+  pivot_longer(!age , names_to = 'metric' , values_to = 'val') |>
+  ggplot(aes(x=age , y=val , group=metric , color=metric)) +
+  geom_smooth(size=2 , se=FALSE)
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
