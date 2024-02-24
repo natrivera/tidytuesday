@@ -1,0 +1,143 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(wordcloud2)
+library(stopwords)
+library(RColorBrewer)
+library(ggimage)
+library(ggtext)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+isc_grants <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-02-20/isc_grants.csv')
+```
+
+
+```{r}
+isc_grants |>
+  group_by(year ) |>
+  summarise(avg_grant = mean(funded , na.rm = TRUE) , tot_grants = sum(funded,na.rm = TRUE) ) |>
+  ggplot(aes(x=year , y= tot_grants )) +
+  geom_line()
+```
+
+
+```{r}
+stops <- stopwords("en") |> as.data.frame() 
+colnames(stops) <- c('word')
+
+words <-  isc_grants |>
+  select(summary) |>
+  unnest_tokens(word, summary) |>
+  mutate(word = ifelse(word == 'packages' , 'package' , word)) |>
+  count(word, sort=TRUE) |>
+  filter(!word %in% c('r','data')) |>
+  anti_join(stops , by=c('word'='word')) |>
+  mutate(rank = rank(-n , ties.method = 'random')) |>
+  mutate(year = 0) 
+
+
+
+
+cloud <- wordcloud2(words, minSize=0.5, size=1, minRotation = 0, maxRotation = 0)#, figPath='num_10.png')
+#cloud <- letterCloud(words , word='R', backgroundColor="black" )
+cloud
+
+```
+
+
+```{r}
+words_yr <-  isc_grants |>
+  select(summary, year) |>
+  group_by(year) |>
+  unnest_tokens(word, summary) |>
+  mutate(word = ifelse(word == 'packages' , 'package' , word)) |>
+  count(word, sort=TRUE) |>
+  filter(!word %in% c('r','data')) |>
+  anti_join(stops , by=c('word'='word')) |>
+  mutate(rank = rank(-n , ties.method = 'random')) |>
+  filter(rank <= 5) 
+
+
+words_yr_all <-  isc_grants |>
+  select(summary, year) |>
+  group_by(year) |>
+  unnest_tokens(word, summary) |>
+  mutate(word = ifelse(word == 'packages' , 'package' , word)) |>
+  count(word, sort=TRUE) |>
+  filter(!word %in% c('r','data')) |>
+  anti_join(stops , by=c('word'='word')) |>
+  mutate(rank = rank(-n , ties.method = 'random')) 
+
+
+words_yr |>
+  ggplot(aes(x=n,y=word)) +
+  geom_bar(stat='identity') +
+  facet_wrap(~year , scales='free_y')
+```
+
+
+
+```{r}
+words_up <- words |>
+  filter(word %in% unique(words_yr$word) | rank <= 10) 
+
+word_rank <- words_up |> select(word,rank) |> rename(ranker = rank)
+
+
+words_plt <- words_yr |>
+  union(words_up) |>
+  left_join(word_rank , by='word') |>
+  mutate(year =  ifelse(year ==0 , '' , as.character(year)) , 
+         rank_col = ifelse(rank >= 6 , '5+' , as.character(rank))) 
+
+
+words_yr_all <- words_yr_all |>
+  filter(word %in% unique(words_plt$word) ) |>
+  mutate(year = as.character(year))
+```
+
+
+```{r}
+plt_title <- '<b>Package & Project</b> have been the most used words in R Consortium ISC Grant summaries for the past 4 years'
+plt_subtitle <- 'Table shows word rank and number of appreances in supercript. First column shows the total.'
+plt_caption <- 'Data: R Consortium via #TidyTuesday  Plot: Nat Rivera'
+
+
+plt <- words_plt |>
+  ggplot(aes(x=year, y=fct_reorder(word, desc(ranker)), fill=rank_col, label=rank)) +
+  geom_tile(show.legend = FALSE) +
+  geom_text(size=5 , color='#000000') +
+  geom_text(data=words_yr_all, aes(x=year, y=word, label=rank) , alpha=0.25 , inherit.aes = FALSE) +
+  geom_text(data=words_yr_all, aes(x=year, y=word, label=n) , 
+            nudge_x = 0.3 , nudge_y = 0.2 , alpha=0.25 , inherit.aes = FALSE) +
+  geom_text(data=words_plt , aes(x=year, y=word, label=n ) , 
+            nudge_x = 0.3 , nudge_y = 0.2 , color='#000000' , size=3) +
+  scale_fill_manual(values = c("#C6ECAE", "#EDB6A3", "#94C9A9" , '#86A3A8' , '#7F90A8' , '#81667A')) +
+  labs(x='' , y='' , title=plt_title , caption = plt_caption , subtitle = plt_subtitle) +
+  scale_x_discrete(position = "top") +
+  theme(
+    axis.text.y = element_text(size=14 ),
+    axis.ticks = element_blank(),
+    panel.grid.major = element_blank(),
+    plot.title = element_textbox_simple(size=24 ,  margin = margin(5,5,20,0) )
+  )
+plt
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
