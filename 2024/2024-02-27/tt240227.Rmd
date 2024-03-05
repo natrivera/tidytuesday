@@ -1,0 +1,132 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(scales)
+library(ggwordcloud)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+events <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-02-27/events.csv')
+births <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-02-27/births.csv')
+deaths <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-02-27/deaths.csv')
+
+births <- births |> mutate(lab = paste(person,'-',year_birth))
+```
+
+
+```{r}
+# generating range of dates 
+dates <- as.data.frame(seq(as.Date('1897-01-01'), as.Date('2024-12-31'),"days") )
+colnames(dates) = 'date'
+
+leaps <- dates |> 
+  filter(month(date) == 2 & day(date) == 29) |> mutate(leap = 'yes')
+
+dates <- dates |> 
+  left_join(leaps) |> 
+  mutate(year = year(date),
+         num = row_number(), 
+         numer = floor(num/1461),
+         leap = ifelse(is.na(leap),'no',leap)) |>
+  group_by(numer) |>
+  mutate(placer = row_number() , yrmo = as.character(year*100+month(date)) , day = day(date) , 
+         month = as.character(month(date)),
+         lab = paste0(format(date,'%y'), '-' ,format(date, '%b'))) 
+```
+
+
+```{r}
+dates |>
+  ggplot(aes(x=placer, y=numer, fill=leap)) +
+  geom_tile()
+```
+
+
+
+```{r}
+last_dt <- dates |>
+  filter(numer == 31) |>
+  mutate(numer = floor(placer/60)) |>
+  group_by(numer) |>
+  mutate(placer = row_number() ) 
+
+lst_lp <- last_dt |> filter(leap == 'yes')
+```
+
+
+```{r}
+plt_title <- 'How Rare is a Leap Day?'
+plt_subtitle <- 'One Leap Day every 4 years means that there are 1460/1 ratio'
+
+
+last_dt |>
+  ggplot(aes(x=day, y=yrmo, fill=as.factor(year), label=day)) +
+  geom_tile(color='#1C7293' , show.legend = FALSE) +
+  geom_tile(data=lst_lp, aes(x=day,y=yrmo) , fill='#FFBA49') +
+  geom_text(size=3 ) +
+  scale_fill_manual(values=c('#C7EBF0','#BFD5E2','#B1B5C8','#B2ABBF')) +
+  labs(x='', y='', title=plt_title , subtitle = plt_subtitle) +
+  theme(
+    plot.background = element_rect(fill='#D3F3EE') , 
+    panel.grid = element_blank(),
+    axis.text.x=element_blank())
+```
+
+
+```{r}
+plt_title <- 'How Rare is Leap Day?'
+plt_subtitle <- 'One Leap Day every 4 years means that the ratio is 1,460/1 - On the calender: Notable Leap Day Births '
+plt_caption <- 'Data: Wikipedia via #TidyTuesday  Plot: Nat Rivera'
+
+
+plt <- last_dt |>
+  ggplot(aes(x=day, y=fct_reorder(lab,desc(yrmo)), fill=as.factor(year), label=day)) +
+  geom_tile(color='#1C7293' , show.legend = FALSE) +
+  geom_tile(data=lst_lp, aes(x=day,y=fct_reorder(lab,desc(yrmo))) , fill='#84E296') +
+  geom_text(size=2, color='#4F5D75', alpha=0.5) +
+  geom_curve( aes(y='24-Feb' , x=29.8 , yend='24-Feb', xend=32) , curvature=0, color='#84E296',
+              arrow = arrow(length = unit(0.01, "npc"))) +
+  geom_text(aes(y='24-Feb', x=33, label='Leap Day'), color='#84E296') +
+  geom_text_wordcloud(data=births, aes(x=15, y='23-Jan', label = lab), 
+                      color='#000000', size=3 , inherit.aes = FALSE) +
+  scale_fill_manual(values=c('#BAA7B0','#B1B5C8','#BFD5E2','#C7EBF0')) +
+  xlim(c(0,33)) +
+  labs(x='', y='', title=plt_title , subtitle = plt_subtitle, caption = plt_caption) +
+  theme(
+    plot.background = element_rect(fill='#02182B') , 
+    panel.grid = element_blank(),
+    axis.text.x=element_blank(), 
+    axis.text.y = element_text(margin = margin(0,-40,0,0)),
+    plot.title = element_text(size = 60, face='bold', hjust=0.5 , color='#84E296'),
+    plot.subtitle = element_text(size=14, color='#84E296'),
+    plot.caption  = element_text(size=12, color='#84E296'))
+plt
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
