@@ -20,7 +20,6 @@ public_picks <- readr::read_csv('https://raw.githubusercontent.com/rfordatascien
 ```
 
 
-909 354-0322
 
 
 ```{r}
