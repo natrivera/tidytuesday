@@ -1,0 +1,136 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(gt)
+library(gtExtras)
+library(webshot2)
+library(image.R)
+```
+
+
+```{r}
+team_results <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-03-26/team-results.csv')
+public_picks <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-03-26/public-picks.csv')
+
+```
+
+
+909 354-0322
+
+
+```{r}
+# convert char to numberic
+picks <- public_picks |>
+  mutate(across(4:9 , .fns = ~ parse_number(.x) /100 )) |>
+  clean_names()
+
+picks_trim <- picks |>
+   mutate(rank16 = rank(-s16 , ties.method = 'random'), 
+          rank8 = rank(-e8 ,  ties.method = 'random' ), 
+          rank4 = rank(-f4 ,  ties.method = 'random' ),
+          rankfin = rank(-finals ,  ties.method = 'random' )) |>
+  #filter(rank16 <= 16 | rank8 <= 8 | rank4 <= 4 | rankfin <= 2)
+  left_join(team_results  , by = c('team'='TEAM')) |>
+  mutate(f4per = parse_number(F4PERCENT) / 100 , 
+         champ_per = parse_number(CHAMPPERCENT) / 100 , 
+         img_url = paste0( 'logos/' ,tolower( team) , '.png')) 
+
+```
+
+
+```{r}
+
+picks_trim |>
+  filter(rank16 <= 64) |> 
+  ggplot(aes(x=f4per, y=r64, label=team)) +
+  #geom_point() +
+  geom_text() +
+  geom_abline()
+
+```
+
+
+
+```{r}
+# function that will return html formatted bar chart
+bar_chart <- function(value, color = "red", display_value = '&nbsp;'){
+  
+  # html of two spans with bar chart
+  glue::glue('<span style=\"display: inline-block; direction: ltr; border-radius: 4px; ' , 
+             ' padding-right: 2px; background-color: {color}; color: {color}; width: {value}% \">&nbsp;</span> ' , 
+             '<span style=\" font-weight: bold; display: fixed;\">&nbsp;{display_value}</span>')
+}
+```
+
+
+
+
+
+
+```{r}
+tbl_title <- 'March Madness'
+tbl_subtitle <- 'Brackets'
+tbl_caption <- 'Data: #TidiTuesday  Table: Nat Rivera'
+
+picks_trim |>
+  filter(rank16 <= 32) |>
+  arrange((rank16)) |>
+  mutate(blank = '' ,
+         bar_chart = bar_chart(r64*50 , color='dodgerblue', display_value = paste0(round(r64,2) *100,'%') ) , 
+         bar_chart = map(bar_chart, ~gt::html(as.character(.x)))) |>
+  select(rank16, img_url, team, bar_chart, s16, e8, f4, finals, blank, W,L, WINPERCENT , F4, CHAMP) |>
+  gt() |>
+  tab_spanner( label = md("Appears On Brackets by Level"), columns = c(4:8) ) |>
+  tab_spanner(label = ' Previous Tournaments Record ' , columns = c(10:14)) |>
+  data_color(columns = WINPERCENT, apply_to = 'fill', 
+             colors = scales::col_numeric(
+                      palette = c("#A0EADE", "#001427"),
+                      domain = c(0, 1)
+             ) ) |>
+  text_transform(
+    #Apply a function to a column
+    locations = cells_body(columns = img_url),
+    fn = function(x) {
+      #Return an image of set dimensions
+      local_image(
+        filename = x,
+        height = 12
+      )
+    }
+  )  |>
+  tab_header(title = md(tbl_title) , subtitle = md(tbl_subtitle)) |>
+  tab_source_note(source_note = md(tbl_caption) ) |>
+  fmt_percent(columns = c(4:8) , decimals = 0) |>
+  cols_width( bar_chart ~ pct(20)) |>
+  cols_align(align = "left" , columns = c('bar_chart')) |>
+  cols_align(align = "center" , columns = c(4:10)) |>
+  tab_options(table.font.size = px(12)) |>
+  cols_label( rank16 = '', team = '', bar_chart = "Total", s16 = "Sweet 16", e8 = 'Elite 8', f4 = 'Final 4', 
+              finals = 'Finals' , blank = '',  WINPERCENT = 'PCT', F4 = 'Final 4',  ) 
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
