@@ -1,0 +1,244 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(ggtext)
+library(scales)
+library(showtext)
+library(ggpubr)
+library(ggimage)
+
+library(rgdal)
+library(rgeos)
+library(maptools)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+auditions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-07-23/auditions.csv')
+eliminations <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-07-23/eliminations.csv')
+finalists <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-07-23/finalists.csv')
+ratings <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-07-23/ratings.csv')
+seasons <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-07-23/seasons.csv')
+songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-07-23/songs.csv')
+
+```
+
+
+```{r}
+ratings <- ratings |> 
+  mutate(airdate = ifelse(season==13, 'January 21, 2014' , airdate) ,
+         airdate = as.Date(airdate , '%B %d, %Y') ) |> 
+  mutate(airyear = year(airdate))
+```
+
+
+
+
+
+
+```{r}
+fins_rats <- ratings |> 
+  filter(grepl("Finale",episode) | grepl("Winner Revealed",episode) ) |>
+  filter(!grepl("Pre",episode) & !grepl("Perform",episode))
+
+fins_rats
+```
+
+
+```{r}
+plt_views <- ratings |> 
+  ggplot(aes(x=airyear , y=viewers_in_millions , group = airyear)) +
+  geom_boxplot(color='#03B5AA' , outlier.colour = 'white' ) +
+  geom_jitter(size=1, alpha=0.5, color='#1E90FF') +
+  geom_jitter(data=fins_rats , aes(x=airyear , y=viewers_in_millions), size=2, color='#183059') +
+  scale_x_continuous(breaks = seq(2002,2020) ) +
+  labs(x='',y='Viewership in Millions', subtitle='Highlited Dots are the Finale of Each Season' , 
+       title='Viewership Peaked in 2006 and has been Dropping Consistently Since' ,
+       caption='Data: TidyTuesday   Viz: Nat Rivera') +
+  theme(
+    plot.title = element_text(  size = 14 , color='#EB5E28' , margin=margin(0, 0, 5, 0), face='bold') ,
+    plot.subtitle = element_text(size=10 , color='#183059' , face = 'bold') ,
+    plot.caption = element_text( size = 8 , hjust = 1 , color='#183059' , face='bold') ,
+    plot.margin = margin(10,10,10,10),
+    panel.grid.minor.x = element_blank(),
+    axis.text = element_text(face='bold' , color='#183059'),
+    axis.title = element_text(face='bold' , color='#183059')
+  )
+  
+plt_views
+```
+
+
+
+
+```{r}
+songs |> group_by(contestant) |> count() |> arrange(desc(n))
+```
+
+
+```{r}
+songs |> group_by(artist) |> count() |> arrange(desc(n))
+```
+
+
+```{r}
+eliminations |> group_by(contestant) |> count() |> arrange(desc(n))
+```
+
+
+```{r}
+final_by_st <- finalists |>
+  mutate(birth = Birthplace) |>
+  separate_wider_delim(birth , ',' ,names =  c('city','state')) |>
+  group_by(state) |>
+  count() |> 
+  mutate(state = trimws(state)) |>
+  arrange(desc(n))
+
+final_by_st 
+```
+
+```{r}
+final_by_st |> filter(state == 'California')
+```
+
+
+
+```{r}
+states <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2023/2023-08-01/states.csv')
+us_map_hex <-  readOGR("us_states_hexgrid.geojson")
+```
+
+
+
+
+```{r}
+us_sts <- us_map_hex |>
+  # transform hex data into table
+  fortify(region = "iso3166_2") |>
+  # transform into tibble format
+  as_tibble() |>
+  # select columns
+  select(id, long, lat) 
+```
+
+
+```{r}
+# Calculate centres of polygons to plot state labels
+centres <- gCentroid(us_map_hex, byid = TRUE) |>
+  as_tibble()
+
+labels <- us_map_hex@data$iso3166_2
+
+hex_labels <- tibble(id = labels, centres) |>
+  #filter(id != "DC") |> 
+  left_join(states |> select(postal_abbreviation , state) , by=c('id'='postal_abbreviation')) |>
+  left_join(final_by_st )
+```
+
+
+
+```{r}
+us_sts_fin <- us_sts |>
+  left_join(hex_labels ) |>
+  filter(!is.na(n))
+```
+
+
+```{r}
+winners <- eliminations |>
+  #filter(finale == 'Winner')
+  filter(place == 1) |>
+  select(4,1:3) |>
+  left_join(finalists , by=c('contestant'='Contestant') )
+
+winners_by_st <- winners |> 
+  mutate(birth = Birthplace) |>
+  separate_wider_delim(birth , ',' ,names =  c('city','state')) |>
+  group_by(state) |>
+  count() |> 
+  mutate(state = trimws(state)) |>
+  arrange(desc(n))
+
+
+win_labels <- tibble(id = labels, centres) |>
+  #filter(id != "DC") |> 
+  left_join(states |> select(postal_abbreviation , state) , by=c('id'='postal_abbreviation')) |>
+  left_join(winners_by_st ) |>
+  filter(!is.na(n))
+
+winners_by_st
+```
+
+
+```{r}
+us_sts_win <- us_sts |>
+  left_join(win_labels ) |>
+  filter(!is.na(n))
+```
+
+
+```{r}
+plt_map <- ggplot() +
+  geom_polygon(data = us_sts, aes(x = long, y = lat, group = id ), fill = "#03B5AA" , colour = "#183059") +
+  geom_polygon(data = us_sts_fin, aes(x = long, y = lat, group = id ), fill = "#1E90FF" , colour = "#183059") +
+  geom_polygon(data = us_sts_win, aes(x = long, y = lat, group = id ), fill = "#EB5E28" , colour = "#183059") +
+  coord_map() +
+  theme_void() +
+  labs(title = 'Number of Finalist Born in Each State' , subtitle = 'States with at least one Winner') +
+  geom_text(data = hex_labels, aes(x = x, y = y+0.75, label = id) ,  colour = "#FFFCF2", size = 3) +
+  geom_text(data = hex_labels, aes(x = x, y = y-0.75, label = n) ,  colour = "#FFFCF2", size = 3) +
+  theme(
+    plot.title = element_text(  size = 15 , color='#183059' , face='bold') ,
+    plot.subtitle = element_text(size=10 , color='#EB5E28' , face='bold') ,
+    plot.caption = element_text( size = 5 , hjust = 0.5 , color='#183059') ,
+    plot.margin = margin(10,0,0,0)
+  )
+
+
+plt_map
+```
+
+
+```{r}
+ggplot(data=data.frame(img_url = c('logo.png')) , aes(x=0,y=0))  +
+  geom_image(aes(url=img_url)) +
+  theme_void()
+```
+
+
+```{r , fig.height=8, fig.width=4}
+p <- ggarrange( plt_map , plt_views , ncol = 1)
+p
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
