@@ -1,0 +1,158 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(ggtext)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+olympics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-08-06/olympics.csv')
+
+```
+
+
+```{r}
+olympics |>
+  filter(year == 2016 , sport == 'Basketball' , noc == 'USA' , sex=='M')
+```
+
+
+```{r}
+oly_sport_years <- olympics |>
+  filter(season == 'Summer') |>
+  group_by(year,  sport) |>
+  summarise(counter = 1 , tot = n()) |>
+  group_by(sport) |>
+  count() |>
+  arrange(desc(n()))
+
+oly_sport_years
+```
+
+
+
+
+```{r}
+olympics |>
+  filter(season == 'Summer' , !is.na(medal)) |>
+  group_by(year, sex, sport) |>
+  summarise(height = mean(height , na.rm = TRUE)  , .groups = 'drop') |>
+  filter(!is.na(height)) |>
+  left_join(oly_sport_years, by = join_by(sport)) |>
+  filter(n >= 10) |>
+  ggplot(aes(x=year , y=height , color=sex)) +
+  geom_line() +
+  facet_wrap(~sport )
+```
+
+
+```{r}
+olympics |>
+  filter(season == 'Summer' , !is.na(medal)) |>
+  group_by(year, sport) |>
+  summarise(height = mean(height , na.rm = TRUE)  , .groups = 'drop') |>
+  filter(!is.na(height )) |>
+  left_join(oly_sport_years, by = join_by(sport)) |>
+  filter(n >= 10) |>
+  ggplot(aes(x=year , y=height )) +
+  geom_line(color='dodgerblue') +
+  facet_wrap(~sport )
+```
+
+
+
+
+
+```{r}
+plt_title <- paste0('<span style="color:#ffffff;">The height (in cm) of Olympic medal</span>>',
+                     '<span style="color:#ffb703;">Winners </span>',
+                     '<span style="color:#ffffff;"> and their</span>>',
+                     '<span style="color:#8ecae6;">Competition</span>>')
+
+sport_plt <- olympics |>
+  filter(season == 'Summer' ) |>
+  mutate(medal = ifelse(is.na(medal) , 'none' , 'medal')) |>
+  group_by(year, sport, medal) |>
+  summarise(height = mean(height , na.rm = TRUE)  , .groups = 'drop') |>
+  filter(!is.na(height )) |>
+  left_join(oly_sport_years, by = join_by(sport)) |>
+  filter(n >= 10) |>
+  ggplot(aes(x=year , y=height , color=medal)) +
+  geom_point( size=0.5 ) +
+  geom_smooth(se=FALSE ) +
+  facet_wrap(~sport , scales='free', ncol = 6) +
+  labs(x='', y='', title=plt_title, 
+       subtitle='Below are the sports that have been in at least 10 Summer Olympics from 1896-2016', 
+       caption='Plot: Nat Rivera   Data: RGriffin Kaggle dataset: 120 years of Olympic history: athletes and results via #TidyTuesday') +
+  scale_color_manual(values=c("#ffb703", "#8ecae6")) +
+  xlim(c(1896,2016)) +
+  theme_void() +
+  theme(
+    plot.background = element_rect(fill='#000000' ) ,
+    plot.margin = margin(0,10,10,10),
+    legend.position = 'none' ,
+    strip.text = element_text(color='#219ebc', size=10 , face='bold'),
+    axis.text.x = element_text(size=8 , color='#FFFFFF' , margin = margin(5,0,10,0)) ,
+    axis.text.y = element_text(size=8 , color='#FFFFFF' , margin = margin(0,0,0,10)),
+    plot.title = element_markdown(size=20 , face='bold' ,  hjust = 0.5 , margin = margin(10,0,10,0)),
+    plot.subtitle = element_text(size=12, color='#ffffff', margin = margin(0,0,20,0) , face='bold'),
+    axis.line.x = element_line(linewidth = 0.5, colour = "red", linetype=1),
+    plot.caption = element_text(size=10 ,face='bold' , color='#ffffff' ) 
+  )
+
+sport_plt
+```
+
+
+RGriffin Kaggle dataset: 120 years of Olympic history: athletes and results
+
+```{r}
+medals <- olympics |>
+  filter(season == 'Summer' , !is.na(medal)) |>
+  group_by(year, sex, sport, event, noc , medal) |>
+  count() 
+
+medals |> filter(sport == 'Football' , sex == 'M' , medal=='Gold') |> arrange(year)
+```
+
+
+```{r}
+top_golds <- medals |> 
+  filter(medal == 'Gold') |>
+  group_by(sport , noc , medal , sex) |>
+  summarise(medals = n() ) |>
+  group_by(sport, sex) |>
+  mutate(rank = floor( dense_rank(-medals )))
+
+top_golds |> filter(sport == 'Football' ,  sex=='M') |> arrange((rank))
+```
+
+
+
+```{r}
+top_golds |>
+  left_join(oly_sport_years , by = join_by(sport)) |>
+  filter(n >= 10 , rank <= 1) |>
+  group_by(sport) |>
+  count() |>
+  arrange(n)
+```
+
+
+
+
+```{r}
+olympics |>
+  filter(medal == 'Gold' , sport == 'Volleyball' , noc == 'USA')
+```
+
+
+```{r}
+```
+
