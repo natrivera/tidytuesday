@@ -1,0 +1,130 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(tidyverse)
+library(scales)
+library(ggtext)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+
+english_monarchs_marriages_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-08-20/english_monarchs_marriages_df.csv')
+
+```
+
+
+```{r}
+kings <- english_monarchs_marriages_df |>
+  mutate(k_age = as.numeric( gsub("[^0-9.-]", "", king_age)) , 
+         q_age = as.numeric( gsub("[^0-9.-]", "", consort_age)),
+         year = as.numeric(gsub("[^0-9.-]", "", year_of_marriage)),
+         age_diff = k_age - q_age)
+```
+
+
+```{r}
+kings |>
+  ggplot(aes(x=q_age , y=k_age)) +
+  geom_point() +
+  geom_abline() 
+```
+
+
+```{r}
+kings |> 
+  group_by(king_name) |>
+  summarise(age_diff = mean(age_diff , na.rm = TRUE)) |>
+  ggplot(aes(x=age_diff , y=king_name)) +
+  geom_bar(stat='identity')
+```
+
+
+```{r}
+max_diff <- kings |>
+  filter(age_diff == max(age_diff , na.rm = TRUE))
+
+
+ten_diff <- kings |>
+  filter(age_diff >= 10)
+
+twenty_diff <- kings |>
+  filter(age_diff >= 20)
+
+thirty_diff <- kings |>
+  filter(age_diff >= 30)
+
+min_mon <- kings |>
+  filter(k_age == min(k_age , na.rm=TRUE))
+```
+
+
+```{r}
+plt_title <- 'The Ages of <span style="color: #7851A9;">Monarchs</span> and their <span style="color: #07BEB8;">Spouses'
+plt_subtitle <- 'Age Gaps over <span style="color: #FFBA49; font-weight:bold;">10 Years</span> and over <span style="color: #EF5B5B;">20 Years</span> are highlighted.'
+plt_caption <- 'Data: Scraped from Ian Visits by f. hull #TidyTuesday   Plot: Nat Rivera'
+
+plt <- kings |>
+  ggplot() +
+  geom_segment(data=ten_diff, aes(x=year, xend=year, y=k_age, yend=q_age), color='#FFBA49') +
+  geom_segment(data=twenty_diff, aes(x=year, xend=year, y=k_age, yend=q_age), color='#EF5B5B') +
+  geom_label(data=thirty_diff, aes(x=year+10, y=k_age-3,  
+                                label=paste0('Age Gap: ' , age_diff , ' years \n' , 
+                                king_name , ' (' , k_age, ') \n', 
+                                consort_name , ' (' , q_age  , ')')), size=3, hjust=0) +
+  geom_label(data=min_mon, aes(x=year+20, y=k_age , 
+                               label=paste0(king_name , ' (' , k_age, ') \n', 
+                                consort_name , ' (' , q_age  , ')')), size=3, hjust=0) +
+  geom_smooth(aes(x=year,y=k_age) , 
+              color='#7851A9', fill='#D3C1D2', span=0.4, 
+              na.rm=TRUE, formula='y ~ x', method='loess', level=0.75) +
+  geom_smooth(aes(x=year,y=q_age) , 
+              color='#07BEB8', fill='#D3C1D2', span=0.4, 
+              na.rm=TRUE, formula='y ~ x', method='loess', level=0.75) +
+    geom_point(aes(x=year,y=k_age) , fill='#7851A9', na.rm=TRUE, size=3, shape=21) +
+  geom_point(aes(x=year,y=q_age) , fill='#07BEB8', na.rm=TRUE, size=3, shape=21) +
+  labs(x='' , y='Age', title = plt_title, subtitle = plt_subtitle , caption = plt_caption) +
+  scale_y_continuous(limits=c(0,60) , breaks=seq(0,60,5)) +
+  scale_x_continuous(limits=c(850,1950), breaks=seq(850,1950,50)) +
+  theme(panel.grid.minor = element_blank(), 
+        panel.grid.major = element_line(color='#F5F5F5'), 
+        plot.title = element_markdown(hjust = 0.5 , face='bold', size=30), 
+        plot.subtitle = element_markdown( size=16), 
+        plot.caption = element_text(size=12))
+
+plt
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
