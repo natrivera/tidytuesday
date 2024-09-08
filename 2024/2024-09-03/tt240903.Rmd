@@ -1,0 +1,410 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(treemapify)
+library(scales)
+library(ggpubr)
+```
+
+
+```{r}
+qname_levels_single_response_crosswalk <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-09-03/qname_levels_single_response_crosswalk.csv')
+stackoverflow_survey_questions <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-09-03/stackoverflow_survey_questions.csv')
+stackoverflow_survey_single_response <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-09-03/stackoverflow_survey_single_response.csv')
+
+```
+
+
+```{r}
+q_name <- qname_levels_single_response_crosswalk
+
+
+suv_usa <- stackoverflow_survey_single_response |>
+  filter(country == 'United States of America' )
+  
+```
+
+
+
+
+```{r}
+main_us <- suv_usa |>
+  group_by(main_branch) |>
+  count() |>
+  filter(!is.na(main_branch)) |>
+  left_join(q_name |> filter(qname == 'main_branch') , by=c('main_branch'='level')) |>
+  select(main_branch, label, n) |>
+  group_by() |>
+  mutate(total = sum(n) , 
+         per = round(n/total*100,0))
+
+main_us
+```
+
+
+```{r}
+plt_title <- 'Which of the following options best describes you today?'
+
+main_plt <- main_us |>
+  ggplot(aes(x=1, y=fct_reorder(label, per), fill=label, size=per, label=paste0(per, '%'))) +
+  geom_point( shape=22, size=20, colour='black') +
+  geom_text(size=4, color='white') + 
+  scale_fill_manual(values=c('#003049','#D62828','#F77F00','#FCBF49','#5BC0EB')) +
+  labs(title=plt_title, x='', y='') +
+  theme(
+    legend.position = 'none',
+    panel.grid = element_blank(),
+    plot.title.position = "plot",
+    plot.title = element_text(hjust = 0.5, face='bold'),
+    axis.text.x = element_blank()
+  )
+
+main_plt
+```
+
+
+
+
+
+
+```{r}
+remote_us <- suv_usa |>
+  group_by(remote_work) |>
+  count() |>
+  filter(!is.na(remote_work)) |>
+  left_join(q_name |> filter(qname == 'remote_work') , by=c('remote_work'='level')) |>
+  mutate(label = ifelse(label == 'Hybrid (some remote, some in-person)','Hybrid',label)) |>
+  group_by() |>
+  mutate(total = sum(n) , 
+         per = round(n/total*100,0)) |>
+  select(label, per) |>
+  add_row(label = '' , per=0) |>
+  arrange(desc(per)) |>
+  mutate(per_lab = cumsum(per) - (per/2) ) 
+
+remote_us
+  
+```
+
+
+```{r}
+plt_title <- 'Which best describes your \ncurrent work situation?'
+
+remote_plt <- remote_us |>
+  ggplot(aes(x=fct_reorder(label , (per)), y=per, fill=label)) +
+  geom_bar(stat='identity', color='black') +
+  coord_polar( theta = 'y' , start=0) +
+  geom_text(aes(y = per, label = paste0(per,'%')), nudge_y = -5 , color = "black", size=4) +
+  geom_text(aes(y = 0, label = paste0(label, ' ' ) ), color = "black", size=5, hjust=1) +
+  labs(title= plt_title) +
+  scale_y_continuous(limits = c(0,100)) +
+  scale_fill_manual(values=c('#ffffff','#F77F00','#5BC0EB','#D62828')) +
+  theme_void(  ) +
+  theme(legend.position = 'none',
+        plot.title.position = 'plot',
+        plot.title = element_text(hjust=0.5, face='bold'))
+
+remote_plt
+```
+
+
+```{r}
+age_us <- suv_usa |>
+  group_by(age) |>
+  count() |>
+  filter(!is.na(age)) |>
+  left_join(q_name |> filter(qname == 'age') , by=c('age'='level')) |>
+  group_by() |>
+  mutate(total = sum(n) , 
+         per = round(n/total*100,0)) 
+
+age_us
+```
+
+
+
+
+
+```{r}
+comp_us <-  suv_usa |>
+  group_by(converted_comp_yearly) |>
+  filter(!is.na(converted_comp_yearly)) |>
+  ungroup() |>
+  mutate(comp = round(converted_comp_yearly / 25000 , 0) *25 , 
+         comp = ifelse(comp >= 500 , 500, comp))|>
+  group_by(comp) |>
+  count()
+
+comp_us
+```
+
+```{r}
+comp_plt <- comp_us |>
+  ggplot(aes(x=comp,y=n)) +
+  geom_bar(stat='identity' , fill='#5BC0EB', colour='black') +
+  labs(y='', x='', title='Compensation in $(k)') +
+  theme(panel.grid = element_blank()) +
+  scale_x_continuous( breaks = seq(0,750,50)) +
+  theme(plot.title = element_text(hjust = 0.5, face='bold'))
+  
+comp_plt
+```
+
+
+
+
+
+
+```{r}
+ed_us <- suv_usa |>
+  group_by(ed_level) |>
+  count() |>
+  filter(!is.na(ed_level)) |>
+  left_join(q_name |> filter(qname == 'ed_level') , by=c('ed_level'='level')) |>
+  mutate(label2 = ifelse(ed_level %in% c(1,7) , '1 - Associate/Some College' , label) , 
+         label2 = ifelse(ed_level %in% c(4,6,8),  '0 -No College' , label2 ), 
+         label2 = ifelse(ed_level == 2 , '2- Bachelor’s degree' , label2), 
+         label2 = ifelse(ed_level == 3, '3 - Master’s degree', label2), 
+         label2 = ifelse(ed_level == 5, '4 - Professional degree', label2)) |>
+  group_by(label2) |>
+  summarise(n = sum(n)) |>
+  group_by() |>
+  mutate(total = sum(n) , 
+         per = round(n/total*100,0))
+
+ed_us
+```
+
+```{r}
+plt_title <- "Which of the following best describes the highest level of formal education that you’ve completed?"
+
+ed_us |>
+  ggplot(aes(y=label2, x=per, fill=label2, label=paste0(per,'%'))) +
+  geom_bar(stat='identity', color='black') +
+  labs(x='',y='', title=plt_title) +
+  geom_text(nudge_x = 2) +
+  scale_fill_manual(values=c('#003049','#D62828','#F77F00','#FCBF49','#5BC0EB')) +
+  theme(
+    panel.grid  = element_blank(), 
+    legend.position = 'none')
+```
+
+
+
+
+```{r}
+plt_title <- "Highest level of formal education that you’ve completed?"
+
+ed_plt <-ed_us |>
+  ggplot(aes(area=per, fill=label2,  label=paste0(label2, '\n' ,per,'%'))) +
+  geom_treemap(color='black') +
+  geom_treemap_text(place = "centre", grow = FALSE, color='white') +
+  labs( title=plt_title) +
+  scale_fill_manual(values=c('#003049','#D62828','#F77F00','#FCBF49','#5BC0EB')) +
+  theme(
+    panel.grid  = element_blank(), 
+    legend.position = 'none',
+    plot.title = element_text(hjust = 0.5, face='bold'))
+
+ed_plt
+```
+
+
+
+
+```{r}
+ai_select_us <- suv_usa |>
+  group_by(ai_select) |>
+  count() |>
+  filter(!is.na(ai_select)) |>
+  left_join(q_name |> filter(qname == 'ai_select') , by=c('ai_select'='level')) |>
+  group_by() |>
+  mutate(total = sum(n) , 
+         per = round(n/total*100,0))
+
+ai_select_us
+
+```
+
+
+```{r}
+plt_title <- 'Do you currently use AI tools \nin your development process?'
+
+ai_select_plt <- ai_select_us |>
+  filter(ai_select == 3) |>
+  ggplot(aes(x=0, y=0, label=paste0(per,'%'))) +
+  geom_text(size=30 , color='#003049') +
+  geom_text( aes(x=0,y=-0), nudge_y = 0, size=10 , color='#003049', 
+             label='\n\n\nAnswered Yes', inherit.aes = FALSE) +
+  labs(title = plt_title) + 
+  theme_void() +
+  theme(plot.title = element_text(hjust=0.5, face='bold'))
+
+ai_select_plt
+```
+
+
+
+```{r}
+
+ai_threat_us <- suv_usa |>
+  group_by(ai_threat) |>
+  count() |>
+  filter(!is.na(ai_threat)) |>
+  left_join(q_name |> filter(qname == 'ai_threat') , by=c('ai_threat'='level')) |>
+  group_by() |>
+  mutate(total = sum(n) , 
+         per = round(n/total*100,0))
+
+ai_threat_us
+
+```
+
+
+
+```{r}
+plt_title <- 'Do you believe AI is a threat \nto your current job?'
+plt_caption <- 'Data: #TidyTuesday  Plots: Nat Rivera'
+
+ai_threat_plt <- ai_threat_us |>
+  ggplot(aes(y=label, x=per, group= label, label=paste0(per, '%  ' , label))) +
+  geom_bar(stat='identity', width = 0.03) +
+  geom_point(aes(fill=label), shape=21, colour='black', size=20) +
+  geom_text( nudge_y = 0.25, nudge_x = -2, color='black') +
+  labs(x='', y='', title=plt_title, caption = plt_caption) +
+  scale_fill_manual(values=c('#F77F00','#5BC0EB','#FCBF49')) +
+  scale_x_continuous(limits = c(0,100)) +
+  theme_void() +
+  theme(
+    legend.position = 'none',
+    plot.title = element_text(hjust = 0.5, face='bold'), 
+    plot.caption = element_text(hjust=0.5, size=12))
+
+
+ai_threat_plt
+```
+
+```{r}
+ai_acc_us <- suv_usa |>
+  group_by(ai_acc) |>
+  count() |>
+  filter(!is.na(ai_acc)) |>
+  left_join(q_name |> filter(qname == 'ai_acc') , by=c('ai_acc'='level')) |>
+  mutate(label = ifelse(label %in% c('Highly trust','Somewhat trust'), 'Trust', label), 
+         label = ifelse(label %in% c('Highly distrust','Somewhat distrust'), 'Distrust', label)) |>
+  group_by(label) |>
+  summarise(n = sum(n)) |>
+  group_by() |>
+  mutate(total = sum(n) , 
+         per = round(n/total*100,0))
+
+ai_acc_us
+```
+
+
+```{r}
+plt_title <- 'How much do you trust the accuracy of the output from AI tools as part of your development workflow?'
+
+ai_acc_plt <-ai_acc_us |>
+  ggplot(aes(x=per*-1, y=label, fill=label, label=paste0( per, '%  ' , label ))) +
+  geom_bar(stat='identity', width = 0.03, color='black', fill='black') +
+  geom_point(size=20, shape=21) +
+  geom_text(nudge_y = 0.25, nudge_x = 7) +
+  labs(title = plt_title) +
+  scale_fill_manual(values=c('#F77F00','#5BC0EB','#FCBF49')) +
+  theme_void() +
+  theme(
+    legend.position = 'none',
+    plot.title = element_text(hjust = 0.5))
+
+ai_acc_plt
+```
+
+
+```{r}
+plt_title <- 'How much do you trust the accuracy \nof the output from AI tools \nas part of your development workflow?'
+
+ai_acc_plt <-ai_acc_us |>
+  ggplot(aes(x=fct_reorder(label , label), y=per, fill=label, label=paste0( per, '%\n' , label ))) +
+  geom_bar(stat='identity', width = 1, color='black', aes(fill=label)) +
+  coord_polar( theta = 'x' , start=0) +
+  geom_text() +
+  labs(title = plt_title) +
+  #scale_y_continuous(limits = c(0,100)) +
+  scale_fill_manual(values=c('#F77F00','#5BC0EB','#FCBF49')) +
+  theme_void() +
+  theme(
+    legend.position = 'none',
+    plot.title = element_text(hjust = 0.5, face='bold'))
+
+ai_acc_plt
+```
+
+
+
+
+
+
+```{r}
+r_used_us <- suv_usa |>
+  group_by(r_used) |>
+  count() |>
+  filter(!is.na(r_used)) |>
+  mutate(r_used = ifelse(r_used==0, 'No', 'Yes')) |>
+  group_by() |>
+  mutate(total = sum(n) , 
+         per = round(n/total*100,0))
+
+r_used_us
+```
+
+
+
+```{r}
+plt_title <- 'Used R in the previous year'
+
+
+r_used_plt <- r_used_us |>
+  filter(r_used == 'Yes') |>
+  ggplot(aes(x=r_used, y=0, size=n, label=paste0(per,'% \nAnswered ', r_used), fill=(r_used))) +
+  geom_point(shape=21, aes(size=n), fill='#F77F00', color='black') +
+  geom_text() +
+  labs(title=plt_title) +
+  theme_void() +
+  theme(
+    legend.position = 'none',
+    plot.title = element_text(hjust=0.5, face='bold'))
+
+r_used_plt
+```
+
+
+
+```{r}
+plt_title <- 'Stack Overflow Annual Developer Survey 2024'
+plt_subtitle <- '   Showing Answers of Respondents from USA ONLY'
+
+p_title <- ggplot() + 
+  theme_void() + 
+  labs(title = plt_title, subtitle = plt_subtitle ) +
+  theme(plot.title = element_text(size=30, face = 'bold', hjust=0.5), 
+        plot.subtitle = element_text(size=14))
+p1 <- ggarrange(ed_plt, main_plt,  ncol = 2 )
+p2 <- ggarrange(comp_plt, r_used_plt, remote_plt, ncol=3)
+p3 <- ggarrange(ai_acc_plt, ai_select_plt, ai_threat_plt, ncol=3)
+p <- ggarrange(p_title, p1, p2, p3, 
+               ncol=1, nrow = 4, heights = c(1,3,3,3) )
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
