@@ -1,0 +1,232 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(qdap)
+library(waffle)
+library(ggtext)
+library(ggpubr)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+hamlet <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-09-17/hamlet.csv')
+macbeth <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-09-17/macbeth.csv')
+romeo_juliet <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-09-17/romeo_juliet.csv')
+```
+
+
+
+```{r}
+all_shak <- rbind(
+  hamlet |> mutate(name = 'Hamlet') , 
+  macbeth |> mutate(name = 'Macbeth') , 
+  romeo_juliet |> mutate(name = 'Romeo & Juliet')
+)
+```
+
+
+```{r}
+all_shake <- all_shak |>
+  rowwise() |>
+  mutate(dial =  gsub("[^[:alnum:][:space:]']", "", dialogue) ,
+         syl = lst(  syllable_count(dial)$syllables ), 
+         sylla = paste(syl, collapse = ",") )
+
+```
+
+
+
+
+
+
+```{r}
+sylla_n <- all_shake |>
+  group_by(sylla) |>
+  count() |>
+  arrange(desc(n)) |>
+  rename(total_n = n)
+
+sylla_n <- tibble::rowid_to_column(sylla_n, "ID")
+
+sylla_n
+
+all_shake <- all_shake |> left_join(sylla_n , by=c('sylla'='sylla'))
+```
+
+
+```{r}
+char_count <- all_shake |>
+  filter(! is.na(line_number)) |>
+  group_by(name, character) |>
+  count() |>
+  arrange(desc(n)) |>
+  group_by(name) |>
+  mutate(name_rank = rank(-n , ties.method = 'average') ) |> 
+  rename( num_lines = n )
+  
+
+char_count_top_six <- char_count |>
+  filter(name_rank <= 6)
+
+top_six_char <- char_count_top_six |> select(name, character) |> unique()
+
+char_count_top_six |> arrange(name , name_rank) 
+```
+
+
+
+
+
+
+
+```{r}
+all_shake |>
+  group_by(name) |>
+  count()
+```
+
+
+
+
+
+```{r}
+famous_lines <- all_shake |>
+  filter(  name == 'Hamlet' & line_number %in% c( 544, 1265, 2089) |
+           name == 'Macbeth' & line_number %in% c(12, 1483, 2224) |
+           name == 'Romeo & Juliet' & line_number %in% c(843, 937, 996) )
+```
+
+
+
+
+```{r}
+top_items <- 12
+
+plt_title <- paste0('Syllable Paterns in Shakespeare Plays<br>',
+                    '<span style="color:#F28F3B;">Hamlet</span> &nbsp;  &nbsp;  &nbsp;  &nbsp;',
+                    '<span style="color:#86BBD8;">Macbeth</span> &nbsp;  &nbsp;  &nbsp;  &nbsp;',
+                    '<span style="color:#C8553D;">Romeo & Juliet</span>')
+plt_subtitle <- '<br>Syllable Patterns are described in the tiles below and are numbered in order with #01 being the most common pattern. <br>On the Left are the 18 most common patterns. <br>On the Right are the five most common patterns used by a few characters in each play. <br>The title characters, Hamlet, Macbeth, Romeo, & Juliet, all have pattern #01 as their most common beating their second most common by nearly double.<br>'
+
+plt_fam <- famous_lines |>
+  group_by(ID) |>
+  mutate(p_label = paste0('Pattern #' , ifelse(ID < 10 , paste0("0",ID), ID) ), 
+         #sylla = gsub(',', '  -  ' , sylla ), 
+         sub_lab = paste(character, '|', name, '|', act ),
+         place_rank = rank(ID , ties.method = 'random'), 
+         label = paste0(sub_lab, '\n', p_label  , '  [', sylla, ']'))  |>
+  ggplot(aes(x=0, y=ID, fill=name)) +
+  geom_tile(color='#000000') +
+  geom_text(aes(label=label), size=3, nudge_y = -2.5) +
+  geom_text(aes(label=paste0('"', dialogue ,'"')), size=4.5, nudge_y = 3.5) +
+  scale_fill_manual(values=c('#F28F3B','#86BBD8','#C8553D')) +
+  labs(title = plt_title, subtitle = plt_subtitle) +
+  theme_void() +
+  facet_wrap(~sylla, ncol = 1 , scales='free') +
+  theme(
+    plot.title = element_textbox(face='bold', size=28, hjust = 0.5, margin = margin(5,5,1,5)),
+    plot.subtitle = element_textbox_simple(margin = margin(0,10,0,15)),
+    strip.text = element_blank(), 
+    legend.position = 'none')
+
+plt_fam
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+top_items <- 18
+
+plt_waf <- all_shake |>
+  filter( ID <= top_items) |>
+  mutate(p_label = paste0('#' , ifelse(ID < 10 , paste0("0",ID), ID), ' [', sylla, ']' )) |>
+  group_by(p_label, name, total_n) |>
+  count() |>
+  ggplot(aes(values=n/5, fill=name)) +
+  geom_waffle(color='#000000', na.rm = TRUE, n_rows = 10, flip = TRUE) +
+  facet_wrap(~p_label, ncol = 3, strip.position = "bottom") +
+  scale_fill_manual(values=c('#F28F3B','#86BBD8','#C8553D')) +
+  labs(caption = '\nPlots: Nat Rivera  Data: #tidyTuesday', subtitle = '\n Each Tile = 5 Lines of Dialogue\n\n') +
+  theme_void() +
+  theme(
+    legend.position = 'none',
+    plot.caption = element_text(size=12)
+  )
+
+plt_waf
+```
+
+
+
+
+
+
+```{r}
+plt_ham <- all_shake |>
+  filter(! is.na(line_number)) |>
+  inner_join(top_six_char, by = join_by(character, name)) |>
+  mutate(p_label = paste0('#' , ifelse(ID < 10 , paste0("0",ID), ID) )) |>
+  group_by(name, character, p_label) |>
+  count() |>
+  group_by(name, character) |>
+  mutate(name_rank = rank(-n , ties.method = 'random') ) |>
+  filter(name_rank <= 5) |>
+  mutate(sub_label = paste0('(',name_rank , ')' , p_label)  , 
+         facet_lab = paste(name, '-' , character)  ) |>
+  ggplot(aes(x=n, y=fct_reorder( p_label, desc(name_rank) ), label=n , fill=name) ) +
+  geom_bar(stat='identity', width = 0.1) +
+  geom_point(shape=21, size=5) +
+  geom_text(size=3 ) +
+  facet_wrap(~facet_lab , ncol = 3, scales = 'free_y' ) +
+  scale_fill_manual(values=c('#F28F3B','#86BBD8','#C8553D')) +
+  labs(x='',y='', subtitle = '\n\n') +
+  theme(
+    legend.position = 'none',
+    axis.text.x = element_blank() 
+  )
+
+plt_ham
+```
+
+
+```{r}
+plt <- ggarrange( plt_waf, plt_fam, plt_ham  , ncol = 3, widths = c(7,7,7) )
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
