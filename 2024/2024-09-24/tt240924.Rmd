@@ -1,0 +1,317 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(waffle)
+library(ggflags)
+library(countrycode)
+library(ggtext)
+
+```
+
+
+```{r}
+country_results_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-09-24/country_results_df.csv')
+individual_results_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-09-24/individual_results_df.csv')
+timeline_df <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-09-24/timeline_df.csv')
+
+```
+
+
+
+
+
+```{r}
+ranked_country <-  country_results_df |>
+  group_by(year) |>
+  arrange(desc(awards_gold),
+    desc(awards_silver),
+    desc(awards_bronze),
+    .by_group = TRUE) |> 
+  mutate(rank = row_number()) 
+
+ranked_country
+```
+
+
+
+```{r}
+ranked_country_decade <-  country_results_df |>
+  mutate(decade = year - year %% 10) |>
+  select(country, decade, awards_gold, awards_silver, awards_bronze, 
+         team_size_all, team_size_male, team_size_female) |>
+  group_by(decade, country ) |>
+  summarise(awards_gold = sum(awards_gold, na.rm = TRUE) , 
+         awards_silver = sum(awards_silver, na.rm = TRUE), 
+         awards_bronze = sum(awards_bronze, na.rm = TRUE), 
+         team_size_all = sum(team_size_all, na.rm = TRUE),
+         team_size_female = sum(team_size_female, na.rm = TRUE),
+         team_size_male = sum(team_size_male, na.rm = TRUE), 
+         female_per = round(team_size_female / team_size_all * 100 ), 
+         male_per = 100 - female_per) |>
+  group_by(decade) |>
+  arrange(desc(awards_gold),
+    desc(awards_silver),
+    desc(awards_bronze),
+    .by_group = TRUE) |> 
+  mutate(rank = row_number(), 
+         top_10 = ifelse(rank<= 10, 'Top 10','n')) |>
+  ungroup()
+
+ranked_country_decade |> filter(rank <= 25)
+```
+
+
+
+
+
+```{r}
+distinct_countries <- ranked_country_decade |> select(country) |> unique()
+```
+
+
+
+
+```{r}
+decade_summ <- ranked_country_decade |>
+  group_by(decade, top_10) |>
+  summarise(female = sum(team_size_female, na.rm = TRUE), 
+            male = sum(team_size_male, na.rm = TRUE), 
+            team = female+male , 
+            female_per = round(female/team*100), 
+            male_per = round(male/team*100 ))
+
+decade_summ
+```
+
+
+
+```{r}
+decade_summ_all <- ranked_country_decade |>
+  group_by(decade) |>
+  summarise(female = sum(team_size_female, na.rm = TRUE), 
+            male = sum(team_size_male, na.rm = TRUE), 
+            team = female+male , 
+            female_per = round(female/team*100), 
+            male_per = round(male/team*100 )) |>
+  mutate(top_10 = 'All Teams')
+
+decade_summ_all
+```
+
+
+```{r}
+decade_summary <- rbind(decade_summ, decade_summ_all)
+
+decade_summary
+```
+
+
+```{r}
+plt_title <- paste0('<span >International Mathematical Olympiad<span>'
+                    #'<br>% of Teams by Gender <br>',
+                   )
+plt_subtitle <- paste0('<br>While the percentage of female team members has been increasing overall, the top 10 teams have not seen the same trend.<br><br>',
+                        '<span style="color:#FF6B35;">% Female   </span>',
+                    '<span style="color:#374A67;">   % Male</span>')
+plt_caption <- '\nPlot: Nat Rivera   Data: #tidyTuesday'
+
+plt <- decade_summary |> 
+  filter(decade>1950, top_10 %in% c('All Teams','Top 10')) |>
+  pivot_longer(cols = c(male_per, female_per)) |>
+  ggplot(aes(values = value, fill = name)) +
+  geom_waffle(na.rm = TRUE, flip = TRUE, n_rows = 10,  
+              color='#0E1116',  radius = unit(3, "pt") , height = 0.5, width = 0.7) +
+  facet_grid(top_10~decade, switch="both") +
+  labs(title = plt_title, subtitle = plt_subtitle, caption = plt_caption) +
+  theme_void() +
+  scale_fill_manual(values=c('#FF6B35', '#374A67')) +
+  theme(legend.position = 'none', 
+        plot.background = element_rect(fill = "#0E1116"), 
+        strip.text.x = element_text(hjust = 0.5, color='#88B7B5', face='bold', size=12), 
+        strip.text.y = element_text(hjust = 0.5, color='#88B7B5', face='bold', size=12, angle = 90), 
+        plot.title = element_markdown(color='#DAFF7D', size=30, face='bold', hjust=0.5  ), 
+        plot.subtitle = element_textbox_simple(color='#88B7B5', size=16, face='bold'),
+        plot.caption = element_text(color='#88B7B5', face='bold'), 
+        plot.margin = margin(20,20,20,20))
+
+plt
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+# Original country names provided by you
+country_2 <- c("Albania", "Algeria", "Angola", "Argentina", "Armenia", "Australia", 
+               "Austria", "Azerbaijan", "Bahrain", "Bangladesh", "Belarus", 
+               "Belgium", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", 
+               "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", 
+               "Cambodia", "Cameroon", "Canada", "Chile", "Colombia", 
+               "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", 
+               "Democratic People's Republic of Korea", "Denmark", 
+               "Dominican Republic", "Ecuador", "Egypt", "El Salvador", 
+               "Estonia", "Finland", "France", "Gambia", "Georgia", 
+               "Germany", "Ghana", "Greece", "Guatemala", "Honduras", 
+               "Hong Kong", "Hungary", "Iceland", "India", "Indonesia", 
+               "Iraq", "Ireland", "Islamic Republic of Iran", "Israel", 
+               "Italy", "Ivory Coast", "Jamaica", "Japan", "Kazakhstan", 
+               "Kenya", "Kosovo", "Kuwait", "Kyrgyzstan", "Laos", "Latvia", 
+               "Liechtenstein", "Lithuania", "Luxembourg", "Macau", 
+               "Madagascar", "Malaysia", "Mauritania", "Mexico", 
+               "Mongolia", "Montenegro", "Morocco", "Mozambique", 
+               "Myanmar", "Nepal", "Netherlands", "New Zealand", 
+               "Nicaragua", "Nigeria", "North Macedonia", "Norway", 
+               "Oman", "Pakistan", "Palestine", "Panama", "Paraguay", 
+               "People's Republic of China", "Peru", "Philippines", "Poland", 
+               "Portugal", "Puerto Rico", "Republic of Korea", 
+               "Republic of Moldova", "Romania", "Russian Federation", 
+               "Rwanda", "Saudi Arabia", "Serbia", "Singapore", 
+               "Slovakia", "Slovenia", "South Africa", "Spain", "Sri Lanka", 
+               "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", 
+               "Tanzania", "Thailand", "Trinidad and Tobago", "Tunisia", 
+               "Türkiye", "Turkmenistan", "Uganda", "Ukraine", 
+               "United Arab Emirates", "United Kingdom", "United States of America", 
+               "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Yugoslavia", "Zimbabwe")
+
+# Standardized country names for compatibility with countrycode
+standardized_countries <- c("Albania", "Algeria", "Angola", "Argentina", "Armenia", "Australia", 
+               "Austria", "Azerbaijan", "Bahrain", "Bangladesh", "Belarus", 
+               "Belgium", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina", 
+               "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", 
+               "Cambodia", "Cameroon", "Canada", "Chile", "Colombia", 
+               "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic", 
+               "North Korea", "Denmark", "Dominican Republic", "Ecuador", "Egypt", 
+               "El Salvador", "Estonia", "Finland", "France", "Gambia", "Georgia", 
+               "Germany", "Ghana", "Greece", "Guatemala", "Honduras", "Hong Kong", 
+               "Hungary", "Iceland", "India", "Indonesia", "Iraq", "Ireland", 
+               "Iran", "Israel", "Italy", "Côte d'Ivoire", "Jamaica", "Japan", 
+               "Kazakhstan", "Kenya", "Kosovo", "Kuwait", "Kyrgyzstan", "Laos", 
+               "Latvia", "Liechtenstein", "Lithuania", "Luxembourg", "Macau", 
+               "Madagascar", "Malaysia", "Mauritania", "Mexico", "Mongolia", 
+               "Montenegro", "Morocco", "Mozambique", "Myanmar", "Nepal", 
+               "Netherlands", "New Zealand", "Nicaragua", "Nigeria", "North Macedonia", 
+               "Norway", "Oman", "Pakistan", "Palestine", "Panama", "Paraguay", 
+               "China", "Peru", "Philippines", "Poland", "Portugal", "Puerto Rico", 
+               "South Korea", "Moldova", "Romania", "Russia", "Rwanda", 
+               "Saudi Arabia", "Serbia", "Singapore", "Slovakia", "Slovenia", 
+               "South Africa", "Spain", "Sri Lanka", "Sweden", "Switzerland", 
+               "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand", 
+               "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", 
+               "Uganda", "Ukraine", "United Arab Emirates", "United Kingdom", 
+               "United States", "Uruguay", "Uzbekistan", "Venezuela", "Vietnam", "Yugoslavia",
+               "Zimbabwe")
+
+# Create a dataframe with country names, ISO 2 code, ISO 3 code, and continent
+country_data <- data.frame(
+  Country = standardized_countries,
+  ISO2 = countrycode(standardized_countries, "country.name", "iso2c"),
+  ISO3 = countrycode(standardized_countries, "country.name", "iso3c"),
+  Continent = countrycode(standardized_countries, "country.name", "continent"),
+  Country_2 = country_2 # Original country names as provided
+) |> clean_names() |> filter(! country %in% c('Kosovo','Yoguslavia'))
+
+
+
+# Manually add Kosovo's and Yugoslavia's information
+extra_countries <- data.frame(
+  Country = c("Kosovo", "Yugoslavia"),
+  ISO2 = c("XK", "YU"),        # Kosovo has an ISO code; Yugoslavia's historical ISO code
+  ISO3 = c("XKX", "YUG"),       # Kosovo has an ISO3 code; Yugoslavia's historical ISO3 code
+  Continent = c("Europe", "Europe"),
+  Country_2 = c("Kosovo", "Yugoslavia")  # Original names
+) |> clean_names()
+
+country_data <- rbind(country_data, extra_countries) |>
+  mutate(iso2 = tolower(iso2))
+
+# View the updated dataframe
+country_data
+
+
+```
+
+
+
+
+```{r}
+countries <- ranked_country_decade |>
+  select(country , decade, rank) |>
+  unique() |>
+  left_join(country_data, by = join_by('country'=='country_2'))
+
+countries
+```
+
+
+
+```{r}
+flag_flag <- countries |>
+  filter(! is.na(iso2) , decade >= 2000 ) |>
+  filter(!(country %in% c("Yugoslavia", "Serbia and Montenegro"))) |>
+  select(country) |>
+  unique() |>
+  mutate(flag = 'y')
+  
+```
+
+
+```{r}
+countries |>
+  left_join(flag_flag , by=('country'='country')) |>
+  mutate(iso = ifelse(flag == 'y', iso2,'') , 
+         iso2 = ifelse(iso == '' , iso2, '')) |>
+  group_by(decade) |>
+  arrange(country) |>
+  mutate(rank = row_number()) |>
+  ggplot(aes(country = iso, x=1, y=rank, label=iso2)) +
+  geom_flag(position = 'jitter') + 
+  geom_text() +
+  facet_wrap(~decade, nrow = 1) +
+  scale_y_reverse() +
+  theme_void()
+
+```
+
+
+
+
+```{r}
+plt_decade_rank <- ranked_country_decade |> 
+  left_join(country_data, by = join_by('country'=='country_2') ) |>
+  left_join(flag_flag , by=('country'='country')) |>
+  mutate(iso = ifelse(flag == 'y', iso2,'') , 
+         iso2 = ifelse(iso == '' , iso2, '')) |>
+  filter(rank <= 10, decade > 1950) |>
+  ggplot(aes(x=rank, y=female_per, group=country, label=country) ) +
+  geom_point() +
+  geom_text(size=2, nudge_y = -0.5) +
+  geom_flag(aes(country = iso), size=5) +
+  facet_wrap(~decade, ncol = 4) #+
+  #scale_y_reverse()
+
+plt_decade_rank
+```
+
