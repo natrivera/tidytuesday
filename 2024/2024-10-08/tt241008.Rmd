@@ -1,0 +1,249 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(waffle)
+library(ggtext)
+library(showtext)
+
+theme_set(theme_minimal())
+```
+
+
+```{r}
+# Import the fonts
+font_add_google("Caveat", "Caveat") 
+showtext_auto()
+```
+
+
+```{r}
+most_visited_nps_species_data <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2024/2024-10-08/most_visited_nps_species_data.csv')
+
+nps <- most_visited_nps_species_data |> janitor::clean_names()
+```
+
+
+```{r}
+nps |> group_by(park_code, category_name, order, family, sci_name) |> count() |> arrange(desc(n))
+```
+
+
+```{r}
+nps |> 
+  filter(! category_name %in% 
+           c('Bacteria', 'Chromista' ,'Fungi', 'Non-vascular Plant' , 'Protozoa', 'Vascular Plant' )) |>
+  group_by(park_code, park_name, category_name) |> 
+  summarise(qty = sum(observations)) |>
+  ggplot(aes(y=category_name, x=qty)) +
+  geom_bar(stat='identity') +
+  facet_wrap(~park_name)
+```
+
+
+```{r}
+snakes <- nps |>
+  filter(category_name == 'Reptile', order == 'Squamata',  grepl('snake', tolower(common_names)))
+```
+
+
+
+
+
+#717568
+#E1F4CB
+#BACBA9
+
+```{r}
+plt <- snakes |>
+  rowwise() |>
+  mutate(abun = ifelse(abundance %in% c('Abundant','Common'), 'Common+' , 
+                       ifelse(abundance %in% c('Occasional', 'Rare', 'Uncommon'), 'Occasional/Rare' , 'Unknown')), 
+         name = str_split(common_names, ',')[[1]][1] ) |>
+  ggplot(aes(x=park_name, y=name, fill=abun)) +
+  geom_tile(stat='identity') +
+  facet_wrap(~park_name, scales = 'free', ncol = 7) +
+  scale_fill_manual(values = c('#717568', '#E1F4CB', '#BACBA9'))
+
+plt
+```
+
+
+```{r}
+
+plt <- snakes |>
+  rowwise() |>
+  mutate(abun = ifelse(abundance %in% c('Abundant','Common'), 'Common+' , 
+                       ifelse(abundance %in% c('Occasional', 'Rare', 'Uncommon'), 'Occasional/Rare' , 'Unknown')), 
+         name = str_split(common_names, ',')[[1]][1] ) |>
+  group_by(park_name, park_code, abun) |> 
+  summarise(n = n(), qty = sum(observations)) |>
+  ggplot(aes(x=park_name, y=n, fill=abun)) +
+  geom_bar(stat='identity', color='#000000') +
+  coord_polar() +
+  scale_fill_manual(values = c('#717568', '#E1F4CB', '#BACBA9')) +
+  theme_void()
+  
+plt
+
+```
+
+
+```{r}
+plt <- nps |>
+  filter(category_name == 'Reptile', order == 'Squamata',  grepl('rattlesnake', tolower(common_names))) |>
+  rowwise() |>
+  mutate(abun = ifelse(abundance %in% c('Abundant','Common'), 'Common+' , 
+                       ifelse(abundance %in% c('Occasional', 'Rare', 'Uncommon'), 'Occasional/Rare' , 'Unknown')), 
+         name = str_split(common_names, ',')[[1]][1] ) |>
+  group_by(park_name, park_code, abun) |> 
+  summarise(n = n(), qty = sum(observations)) |>
+  ggplot(aes(x=park_name, y=n, fill=abun)) +
+  geom_bar(stat='identity', color='#000000') +
+  coord_polar() +
+  scale_fill_manual(values = c('#717568', '#E1F4CB', '#BACBA9')) +
+  theme_void()
+  
+plt
+```
+
+
+```{r}
+plt <- snakes |>
+  rowwise() |>
+  mutate(abun = ifelse(abundance %in% c('Abundant','Common'), 'Common+' , 
+                       ifelse(abundance %in% c('Occasional', 'Rare', 'Uncommon'), 'Occasional/Rare' , 'Unknown')), 
+         name = str_split(common_names, ',')[[1]][1] ) |>
+  group_by(park_name, park_code, abun) |> 
+  summarise(n = n(), qty = sum(observations), .groups = 'drop') |>
+  ggplot(aes( values=n, fill=abun)) +
+  geom_waffle( color='#ffffff', na.rm = TRUE, flip = FALSE, n_rows = 1) +
+  facet_wrap(~park_name, ncol = 1, strip.position = "left") +
+  scale_fill_manual(values = c('#BA3F1D', '#FED766', '#000000')) +
+  theme_void() +
+  theme(legend.position = 'none' )
+  
+plt
+```
+8AA39B
+
+
+
+
+
+```{r}
+cols <- 5
+
+snake_dat <- snakes |>
+  rowwise() |>
+  mutate(abun = ifelse(abundance %in% c('Abundant','Common'), 'Common+' , 
+                       ifelse(abundance %in% c('Occasional', 'Rare', 'Uncommon'), 'Occasional/Rare' , 'Unknown')), 
+         name = str_split(common_names, ',')[[1]][1] ,
+         rattle = ifelse( grepl('rattlesnake', tolower(common_names)), 'R','')) |>
+  group_by(park_name, park_code, abun, name, rattle) |> 
+  summarise(n = n(), qty = sum(observations), .groups='drop') |>
+  group_by(park_name, park_code) |>
+  mutate(rank = rank(name, ties.method = 'random') , 
+         y = floor( (rank-1 )/cols)  , 
+         x = (cols - (rank - (cols*y)) ) )
+
+snake_dat
+```
+
+
+```{r}
+plt_title <- 'I have had it with all these SNAKES in all these National Parks!!!'
+plt_subtitle <- paste0('<span style="color:#ffffff;">How Abundant is the Snake Species in Each Park?</span> \t ',
+                       '<span style="color:#6A5D7B;">Abundant/Common</span>\t',
+                       '<span style="color:#0197F6;">Occasional/Rare</span>\t',
+                       '<span style="color:#79C99E;">Unknown</span>')
+plt_caption <- '\nData: #tidyTuesday   Plot: Nat Rivera'
+
+plt <- snake_dat |>
+  ggplot(aes( values=n, fill=abun)) +
+  geom_waffle( color='#ffffff', na.rm = TRUE, flip = TRUE, n_rows = 5) +
+  #geom_text(aes(x=1,y=1)) +
+  facet_wrap(~park_name, ncol = 4, strip.position = "bottom") +
+  scale_fill_manual(values = c('#6A5D7B', '#0197F6', '#79C99E')) +
+  labs(title = plt_title, subtitle = plt_subtitle, caption = plt_caption) +
+  theme_void() +
+  theme(legend.position = 'none' ,
+        text=element_text( family="Caveat") ,
+        plot.title = element_textbox_simple(color = '#FF6B35', face='bold', size=30),
+        plot.subtitle = element_markdown(face='bold'),
+        plot.caption = element_markdown(color='#ffffff'),
+        plot.background = element_rect(fill = "#000000"),
+        strip.text = element_text(hjust = 0.5, color='#FF6B35', face='bold', size=10),
+        plot.margin = margin(20,20,20,20))
+  
+plt
+```
+
+
+
+```{r}
+plt_title <- 'I have had it with all these SNAKES in all these National Parks!!!'
+plt_subtitle <- paste0('<span style="color:#ffffff;">How Abundant is the Snake Species in Each Park?</span> \t ',
+                       '<span style="color:#6A5D7B;">Abundant/Common</span>\t',
+                       '<span style="color:#0197F6;">Occasional/Rare</span>\t',
+                       '<span style="color:#79C99E;">Unknown</span>')
+plt_caption <- '\nData: #tidyTuesday   Plot: Nat Rivera'
+
+plt <- snake_dat |>
+  ggplot(aes( x=x, y=y, fill=abun, label=name, color=rattle)) +
+  #geom_waffle( color='#ffffff', na.rm = TRUE, flip = TRUE, n_rows = 5) +
+  geom_tile(color='#ffffff') +
+  geom_text(size=1) +
+  facet_wrap(~park_name, ncol = 3, strip.position = "bottom") +
+  scale_fill_manual(values = c('#6A5D7B', '#0197F6', '#79C99E')) +
+  scale_color_manual(values = c('#ffffff','#BA1200')) +
+  labs(title = plt_title, subtitle = plt_subtitle, caption = plt_caption) +
+  theme_void() +
+  theme(legend.position = 'none' ,
+        text=element_text( family="Caveat") ,
+        plot.title = element_textbox_simple(color = '#FF6B35', face='bold', size=30),
+        plot.subtitle = element_markdown(face='bold'),
+        plot.caption = element_markdown(color='#ffffff'),
+        plot.background = element_rect(fill = "#000000"),
+        strip.text = element_text(hjust = 0.5, color='#FF6B35', face='bold', size=12),
+        plot.margin = margin(20,20,20,20))
+  
+plt
+```
+
+
+
+
+```{r}
+plt <- snakes |> filter(grepl('rattlesnake', tolower(common_names) ) ) |>
+  rowwise() |>
+  mutate(abun = ifelse(abundance %in% c('Abundant','Common'), 'Common+' , 
+                       ifelse(abundance %in% c('Occasional', 'Rare', 'Uncommon'), 'Occasional/Rare' , 'Unknown')), 
+         name = str_split(common_names, ',')[[1]][1] ) |>
+  group_by(park_name, park_code, abun) |> 
+  summarise(n = n(), qty = sum(observations), .groups = 'drop') |>
+  ggplot(aes( values=n, fill=abun)) +
+  geom_waffle( color='#ffffff', na.rm = TRUE, flip = FALSE, n_rows = 1) +
+  facet_wrap(~park_name, ncol = 1, strip.position = "left") +
+  scale_fill_manual(values = c('#BA3F1D', '#FED766', '#000000')) +
+  theme_void() +
+  theme(legend.position = 'none' )
+  
+plt
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
+
+```{r}
+```
+
